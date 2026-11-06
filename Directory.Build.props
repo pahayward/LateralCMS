@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Brief asks for .NET 9+. Target 9 and let the app also run on newer runtimes (e.g. a machine with only .NET 10 installed). -->
+    <TargetFramework>net9.0</TargetFramework>
+    <RollForward>Major</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <TreatWarningsAsErrors Condition="'$(CI)' == 'true'">true</TreatWarningsAsErrors>
+    <!-- Culture-independent behaviour on every OS; also avoids needing ICU on slim Linux images. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,27 @@
+[
+  {
+    "Name": "CMS and test console",
+    "Projects": [
+      {
+        "Path": "src\\Lateral.Cms\\Lateral.Cms.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      },
+      {
+        "Path": "tools\\Lateral.Cms.TestConsole\\Lateral.Cms.TestConsole.csproj",
+        "Action": "Start",
+        "DebugTarget": "console"
+      }
+    ]
+  },
+  {
+    "Name": "CMS only",
+    "Projects": [
+      {
+        "Path": "src\\Lateral.Cms\\Lateral.Cms.csproj",
+        "Action": "Start",
+        "DebugTarget": "http"
+      }
+    ]
+  }
+]

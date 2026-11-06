@@ -1,0 +1,86 @@
+### Manual requests for the Lateral CMS service.
+### Works with the Visual Studio / VS Code REST Client .http support.
+### Paste the development passwords from src/Lateral.Cms/appsettings.Development.json below.
+### (VS Code "REST Client" encodes `Basic user:password` for you; so does Visual Studio.)
+
+@host = http://localhost:5080
+@cmsUser = cms-ingest-svc
+@cmsPassword = <Auth:Cms:Passwords[0]>
+@userName = user@lateral.example
+@userPassword = <Auth:Users[0].Password>
+@adminName = admin@lateral.example
+@adminPassword = <Auth:Users[1].Password>
+@batchId = <batchId from a POST /cms/events response>
+
+### 1. CMS pushes a batch: add, update, and a never-published unpublish.
+### The service stores it and answers 202 (outcomes "queued") with a Location header; the worker applies it a
+### moment later. Copy the batchId from the response into @batchId below, then run request 1b.
+POST {{host}}/cms/events
+Authorization: Basic {{cmsUser}}:{{cmsPassword}}
+Content-Type: application/json
+
+[
+  { "type": "publish",   "id": "article-1", "version": 1, "payload": { "title": "Hello" },        "timestamp": "2024-01-01T00:00:00Z" },
+  { "type": "publish",   "id": "article-1", "version": 2, "payload": { "title": "Hello again" },  "timestamp": "2024-01-02T00:00:00Z" },
+  { "type": "unPublish", "id": "draft-7",   "version": 3, "payload": { "title": "Never live" },   "timestamp": "2024-01-03T00:00:00Z" },
+  { "type": "delete",    "id": "article-9",                                                       "timestamp": "2024-01-04T00:00:00Z" }
+]
+
+### 1b. Follow the batch: queued, then completed with every event's final outcome (the CMS account or an admin may ask)
+GET {{host}}/cms/batches/{{batchId}}
+Authorization: Basic {{cmsUser}}:{{cmsPassword}}
+
+### 2. Replaying it is harmless: older/identical events are reported as ignored
+POST {{host}}/cms/events
+Authorization: Basic {{cmsUser}}:{{cmsPassword}}
+Content-Type: application/json
+
+[
+  { "type": "publish", "id": "article-1", "version": 1, "payload": { "title": "Hello" }, "timestamp": "2024-01-01T00:00:00Z" }
+]
+
+### 3. A user sees only published, enabled entities
+GET {{host}}/api/entities
+Authorization: Basic {{userName}}:{{userPassword}}
+
+### 4. An admin sees everything, with a status block
+GET {{host}}/api/entities
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 5. One entity (404 for a user if it is hidden)
+GET {{host}}/api/entities/draft-7
+Authorization: Basic {{userName}}:{{userPassword}}
+
+### 6. Admin hides an entity from users (local override, CMS unaffected)
+POST {{host}}/api/entities/article-1/disable
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 7. ...and restores it
+POST {{host}}/api/entities/article-1/enable
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 8. Paging
+GET {{host}}/api/entities?limit=1
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 9. The wrong account is forbidden (CMS credentials cannot read)
+GET {{host}}/api/entities
+Authorization: Basic {{cmsUser}}:{{cmsPassword}}
+
+### 10. No credentials: 401 with a Basic challenge
+GET {{host}}/api/entities
+
+### 10b. An admin checks the queue: batches waiting, age of the oldest, space used, failed batches
+GET {{host}}/api/admin/ingestion
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 10c. An admin puts a failed batch back in the queue (409 if it has not failed)
+POST {{host}}/api/admin/ingestion/{{batchId}}/requeue
+Authorization: Basic {{adminName}}:{{adminPassword}}
+
+### 11. TEST ONLY: an admin erases everything, queued batches included, and starts again (Development only; 404 when switched off)
+POST {{host}}/api/admin/reset
+Authorization: Basic {{adminName}}:{{adminPassword}}
+Content-Type: application/json
+
+{ "confirm": "reset-all-data" }

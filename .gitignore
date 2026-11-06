@@ -1,0 +1,26 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+TestResults/
+*.trx
+coverage/
+
+## Local databases (SQLite + WAL side files)
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+
+## Secrets / local overrides
+appsettings.Local.json
+secrets.json
+
+## OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

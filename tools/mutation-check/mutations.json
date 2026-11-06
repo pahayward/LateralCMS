@@ -1,0 +1,338 @@
+[
+  {
+    "id": "M01",
+    "area": "Rules",
+    "rule": "ignore the tombstone",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "if (tombstone is { } tomb && e.Timestamp <= tomb.DeletedAt)",
+    "replace": "if (tombstone is { } tomb && e.Timestamp <= tomb.DeletedAt && false)"
+  },
+  {
+    "id": "M02",
+    "area": "Rules",
+    "rule": "remove the unPublish tie-break",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "return new(EventOutcome.IgnoredStale, ReasonCodes.TieUnpublishWins, current, tombstone);",
+    "replace": "return new(EventOutcome.Applied, null, Overwrite(current, e, now, publish), tombstone);"
+  },
+  {
+    "id": "M03",
+    "area": "Rules",
+    "rule": "remove the stale-version check",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "if (version < current.Version)",
+    "replace": "if (version < current.Version && false)"
+  },
+  {
+    "id": "M04",
+    "area": "Rules",
+    "rule": "decide content conflicts by arrival order",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "return content < 0\n",
+    "replace": "return content < 0 && false\n"
+  },
+  {
+    "id": "M05",
+    "area": "Rules",
+    "rule": "a stale delete does not raise the tombstone",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "return new(EventOutcome.IgnoredStale, ReasonCodes.NewerStateExists, current, tombstone);",
+    "replace": "return new(EventOutcome.IgnoredStale, ReasonCodes.NewerStateExists, current, null);"
+  },
+  {
+    "id": "M06",
+    "area": "Rules",
+    "rule": "re-create keeps the old admin override (same-batch delete and re-create)",
+    "file": "src/Lateral.Cms/Persistence/Rows.cs",
+    "find": "        row.IsDisabledByAdmin = state.IsDisabledByAdmin;\n        row.DisabledBy = state.DisabledBy;\n        row.DisabledAt = state.DisabledAt;\n",
+    "replace": ""
+  },
+  {
+    "id": "M07",
+    "area": "Parsing",
+    "rule": "hash the wrong bytes",
+    "file": "src/Lateral.Cms/Ingestion/EventParser.cs",
+    "find": "checksum = checksums.Compute(buffer.WrittenSpan);",
+    "replace": "checksum = checksums.Compute(Encoding.UTF8.GetBytes(payload + \" \"));"
+  },
+  {
+    "id": "M08",
+    "area": "Parsing",
+    "rule": "remove the declared-length check",
+    "file": "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs",
+    "find": "if (http.Request.ContentLength > settings.MaxBodyBytes)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M09",
+    "area": "Parsing",
+    "rule": "accept far-future timestamps",
+    "file": "src/Lateral.Cms/Ingestion/EventParser.cs",
+    "find": "if (timestamp > now + options.MaxFutureSkew)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M10",
+    "area": "Storage",
+    "rule": "open the read side read-write",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "read.Mode = SqliteOpenMode.ReadOnly;",
+    "replace": "read.Mode = SqliteOpenMode.ReadWriteCreate;"
+  },
+  {
+    "id": "M11",
+    "area": "Storage",
+    "rule": "stop renewing the concurrency token",
+    "file": "src/Lateral.Cms/Persistence/CmsWriteDbContext.cs",
+    "find": "entry.Entity.ConcurrencyStamp = Guid.NewGuid();",
+    "replace": "_ = entry;"
+  },
+  {
+    "id": "M12",
+    "area": "Storage",
+    "rule": "make the listing index filter unmatched by the query",
+    "file": "src/Lateral.Cms/Persistence/Migrations/20261105162137_Initial.cs",
+    "find": "filter: \"\\\"IsPublished\\\" AND NOT \\\"IsDisabledByAdmin\\\"\");",
+    "replace": "filter: \"\\\"IsPublished\\\" = 1 AND \\\"IsDisabledByAdmin\\\" = 0\");"
+  },
+  {
+    "id": "M13",
+    "area": "Storage",
+    "rule": "turn secure_delete off",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "PRAGMA secure_delete = ON;",
+    "replace": "PRAGMA secure_delete = OFF;"
+  },
+  {
+    "id": "M14",
+    "area": "Storage",
+    "rule": "drop the payload CHECK",
+    "file": "src/Lateral.Cms/Persistence/Migrations/20261105162137_Initial.cs",
+    "find": "table.CheckConstraint(\"CK_Events_PayloadOnlyWhileQueued\", \"\\\"Outcome\\\" = 'queued' OR \\\"Payload\\\" IS NULL\");",
+    "replace": ""
+  },
+  {
+    "id": "M15",
+    "area": "Pipeline",
+    "rule": "commit the apply and the batch completion separately",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "            await ReduceAsync(queued, now, cancellationToken);\n",
+    "replace": "            await ReduceAsync(queued, now, cancellationToken);\n            await db.SaveChangesAsync(cancellationToken);\n"
+  },
+  {
+    "id": "M16",
+    "area": "Pipeline",
+    "rule": "leave the payload in the row when a batch is applied",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "                row.Payload = null;\n",
+    "replace": ""
+  },
+  {
+    "id": "M17",
+    "area": "Pipeline",
+    "rule": "remove takedown priority",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": ".OrderByDescending(b => b.HasTakedown)",
+    "replace": ".OrderBy(b => b.Id)"
+  },
+  {
+    "id": "M18",
+    "area": "Pipeline",
+    "rule": "never set a batch aside",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "var finalAttempt = !takedown && attempt >= settings.MaxAttempts;",
+    "replace": "var finalAttempt = false;"
+  },
+  {
+    "id": "M19",
+    "area": "Pipeline",
+    "rule": "no back-off between attempts",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "var next = finalAttempt ? now : now + settings.DelayBefore(attempt + 1);",
+    "replace": "var next = now;"
+  },
+  {
+    "id": "M20",
+    "area": "Pipeline",
+    "rule": "queue size cap not enforced",
+    "file": "src/Lateral.Cms/Ingestion/AcceptService.cs",
+    "find": "if (used + row.PayloadBytes > limit)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M21",
+    "area": "Pipeline",
+    "rule": "queue size cap not judged under the write gate",
+    "file": "src/Lateral.Cms/Ingestion/AcceptService.cs",
+    "find": "using (await gate.AcquireAsync(cancellationToken))",
+    "replace": "if (true)"
+  },
+  {
+    "id": "M22",
+    "area": "Pipeline",
+    "rule": "let the worker die on an exception",
+    "file": "src/Lateral.Cms/Ingestion/BatchWorker.cs",
+    "find": "catch (Exception ex)\n            {\n                IngestionLog.WorkerFault(logger, ex);",
+    "replace": "catch (Exception ex) when (false)\n            {\n                IngestionLog.WorkerFault(logger, ex);"
+  },
+  {
+    "id": "M23",
+    "area": "Pipeline",
+    "rule": "pick set-aside batches again",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": ".Where(b => b.Status == BatchState.Queued && b.NextAttemptAt <= now)",
+    "replace": ".Where(b => b.Status != BatchState.Completed && b.NextAttemptAt <= now)"
+  },
+  {
+    "id": "M24",
+    "area": "Pipeline",
+    "rule": "report a failed batch as queued",
+    "file": "src/Lateral.Cms/Ingestion/BatchEndpoints.cs",
+    "find": "batchId, batch.Status, results, batch.ReceivedAt, batch.CompletedAt,",
+    "replace": "batchId, batch.Status == BatchState.Failed ? BatchState.Queued : batch.Status, results, batch.ReceivedAt, batch.CompletedAt,"
+  },
+  {
+    "id": "M25",
+    "area": "Pipeline",
+    "rule": "acknowledge even though nothing was stored",
+    "file": "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs",
+    "find": "return Problem(StatusCodes.Status503ServiceUnavailable, \"storage_unavailable\",\n                    \"The batch could not be stored. Nothing was applied; retry it.\", batchId);",
+    "replace": "return Results.Accepted($\"/cms/batches/{batchId}\");"
+  },
+  {
+    "id": "M26",
+    "area": "Pipeline",
+    "rule": "a batch holding a takedown may be set aside like any other",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "var finalAttempt = !takedown && attempt >= settings.MaxAttempts;",
+    "replace": "var finalAttempt = attempt >= settings.MaxAttempts;"
+  },
+  {
+    "id": "M27",
+    "area": "Security",
+    "rule": "let users read batch status",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": ".AddPolicy(Policies.BatchStatus, policy => policy.RequireRole(Roles.CmsIngest, Roles.Admin));",
+    "replace": ".AddPolicy(Policies.BatchStatus, policy => policy.RequireRole(Roles.CmsIngest, Roles.Admin, Roles.User));"
+  },
+  {
+    "id": "M28",
+    "area": "Security",
+    "rule": "let admins ingest",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": ".AddPolicy(Policies.CmsIngest, policy => policy.RequireRole(Roles.CmsIngest))",
+    "replace": ".AddPolicy(Policies.CmsIngest, policy => policy.RequireRole(Roles.CmsIngest, Roles.Admin))"
+  },
+  {
+    "id": "M29",
+    "area": "Security",
+    "rule": "remove the fallback policy",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": ".SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build())",
+    "replace": ".SetFallbackPolicy(null)"
+  },
+  {
+    "id": "M30",
+    "area": "Security",
+    "rule": "log a payload",
+    "file": "src/Lateral.Cms/Ingestion/AcceptService.cs",
+    "find": "metrics.EventQueued(item.Event.Type);",
+    "replace": "metrics.EventQueued(item.Event.Type); logger.LogInformation(\"queued {Payload}\", item.Event.Payload);"
+  },
+  {
+    "id": "M31",
+    "area": "Rules",
+    "rule": "an event exactly at the tombstone time is applied",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "e.Timestamp <= tomb.DeletedAt",
+    "replace": "e.Timestamp < tomb.DeletedAt"
+  },
+  {
+    "id": "M32",
+    "area": "Rules",
+    "rule": "a delete at the entity's own instant is treated as stale",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "if (e.Timestamp < current.LastEventTimestamp)",
+    "replace": "if (e.Timestamp <= current.LastEventTimestamp)"
+  },
+  {
+    "id": "M33",
+    "area": "Read API",
+    "rule": "users also see entities an admin disabled",
+    "file": "src/Lateral.Cms/Entities/EntityQueries.cs",
+    "find": "db.Entities.Where(e => e.IsPublished && !e.IsDisabledByAdmin)",
+    "replace": "db.Entities.Where(e => e.IsPublished)"
+  },
+  {
+    "id": "M34",
+    "area": "Read API",
+    "rule": "users also see unpublished entities",
+    "file": "src/Lateral.Cms/Entities/EntityQueries.cs",
+    "find": "db.Entities.Where(e => e.IsPublished && !e.IsDisabledByAdmin)",
+    "replace": "db.Entities.Where(e => !e.IsDisabledByAdmin)"
+  },
+  {
+    "id": "M35",
+    "area": "Parsing",
+    "rule": "allow control characters in ids",
+    "file": "src/Lateral.Cms/Ingestion/EventParser.cs",
+    "find": "text.Any(c => char.IsControl(c) || c is '/' or '\\\\')",
+    "replace": "text.Any(c => c is '/' or '\\\\')"
+  },
+  {
+    "id": "M36",
+    "area": "Rules",
+    "rule": "an unPublish for an id never seen is ignored instead of creating it",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "return new(EventOutcome.Applied, null, Create(e, now, publish), tombstone);",
+    "replace": "return publish ? new(EventOutcome.Applied, null, Create(e, now, publish), tombstone) : new(EventOutcome.IgnoredStale, ReasonCodes.OlderVersion, null, tombstone);"
+  },
+  {
+    "id": "M37",
+    "area": "Rules",
+    "rule": "a delete keeps the entity row and its payload",
+    "file": "src/Lateral.Cms/Domain/Reducer.cs",
+    "find": "return new(EventOutcome.Applied, null, null, tombstone);",
+    "replace": "return new(EventOutcome.Applied, null, current, tombstone);"
+  },
+  {
+    "id": "M38",
+    "area": "Observability",
+    "rule": "a stale, rejected or conflicting event is logged at Information",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "? LogLevel.Information\n                : LogLevel.Warning;",
+    "replace": "? LogLevel.Information\n                : LogLevel.Information;"
+  },
+  {
+    "id": "M39",
+    "area": "Observability",
+    "rule": "a rejected or unsupported event is logged at Information",
+    "file": "src/Lateral.Cms/Ingestion/AcceptService.cs",
+    "find": "logger, LogLevel.Warning, batchId, result.Index",
+    "replace": "logger, LogLevel.Information, batchId, result.Index"
+  },
+  {
+    "id": "M40",
+    "area": "Pipeline",
+    "rule": "a batch is never flagged as holding a takedown",
+    "file": "src/Lateral.Cms/Ingestion/AcceptService.cs",
+    "find": "HasTakedown = queued.Any(p => p.Event!.Type != CmsEventType.Publish),",
+    "replace": "HasTakedown = false,"
+  },
+  {
+    "id": "M41",
+    "area": "Developer tooling",
+    "rule": "the reset runs without the confirmation phrase",
+    "file": "src/Lateral.Cms/Admin/AdminEndpoints.cs",
+    "find": "if (!string.Equals(request?.Confirm, ConfirmationPhrase, StringComparison.Ordinal))",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M42",
+    "area": "Developer tooling",
+    "rule": "the reset route is mapped even when it is switched off",
+    "file": "src/Lateral.Cms/Admin/AdminEndpoints.cs",
+    "find": "if (!app.Services.GetRequiredService<IOptions<AdminOptions>>().Value.AllowReset)",
+    "replace": "if (false)"
+  }
+]

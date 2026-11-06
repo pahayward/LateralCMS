@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      # CI=true is set by GitHub Actions, which turns warnings into errors (see Directory.Build.props).
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: "**/TestResults/*.trx"
+
+  # Runs the commands of the README's "Try it" section against the built service, so the README cannot drift from it.
+  readme-smoke:
+    name: README try-it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Build
+        run: dotnet build src/Lateral.Cms --configuration Release
+
+      - name: Start the service (Development, so the development credentials apply)
+        run: |
+          # `dotnet run` (not the bare dll) so the content root is the project folder, where the development settings are.
+          ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://localhost:5080 \
+            Database__ConnectionString="Data Source=$RUNNER_TEMP/readme-smoke.db" \
+            dotnet run --project src/Lateral.Cms --configuration Release --no-build --no-launch-profile > "$RUNNER_TEMP/service.log" 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:5080/health && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/service.log"; exit 1
+
+      - name: Run the README's try-it commands
+        run: |
+          # Every fenced block tagged "bash try-it" in README.md, in order, as one script.
+          awk '/^```bash try-it$/{on=1; next} /^```$/{on=0} on' README.md > "$RUNNER_TEMP/try-it.sh"
+          test -s "$RUNNER_TEMP/try-it.sh"
+          bash -eo pipefail "$RUNNER_TEMP/try-it.sh"
