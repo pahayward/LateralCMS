@@ -12,7 +12,7 @@ tests in [REQUIREMENTS](REQUIREMENTS.md).
 | Check | Command | Result |
 |---|---|---|
 | Strict build (warnings are errors, as CI) | `CI=true dotnet build Lateral.sln -c Release` | 0 warnings, 0 errors |
-| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 575 passed, 0 failed, 17 to 24 s |
+| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 579 passed, 0 failed, 17 to 24 s |
 | Test console suite | `dotnet test tests/Lateral.Cms.TestConsole.Tests -c Release` | 127 passed, 0 failed |
 | Flake gate | the service suite, repeated with no rebuild | 20 of 20 passed (575 tests each, 17 to 24 s per run), no failures. Earlier gates each stopped at a failure that was then traced and fixed: an error logged when the app stopped mid-way through opening a connection, a race in the Microsoft.Data.Sqlite connection pool that gave a rare HTTP 500 "database is locked" (DESIGN K21), and a scan test that raced a 400 ms timeout |
 
@@ -147,8 +147,10 @@ was not caught. "(+N more)" means N further tests also failed. Manual, not an au
 | M77 | Assets | a range in an unknown unit is treated as bytes | killed | `Api › BadInputTests.A_bad_range_unit_is_ignored_and_the_whole_file_is_sent` |
 | M78 | Console | the endpoint catalogue says users may post events | killed | `Delivery › EndpointCatalogueTests.The_catalogue_names_the_same_callers_as_the_role_matrix_proves` |
 | M79 | Console | the architecture diagram points at a file that does not exist | killed | `Delivery › EndpointCatalogueTests.A_diagram_describes_real_files_and_real_tests_and_every_walkthrough_step_points_at_a_real_box` |
+| M80 | Console | the requirements document quietly calls the unpushed repository done | killed | `Delivery › RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document` |
+| M81 | Console | the requirements page claims the repository requirement is met | killed | `Delivery › RequirementsTraceTests.An_item_is_met_only_when_every_requirement_it_cites_is_done_and_anything_less_says_what_is_missing` |
 
-79 of 79 defects were caught.
+81 of 81 defects were caught.
 
 ## 3. Measurements
 

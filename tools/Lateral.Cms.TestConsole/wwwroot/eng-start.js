@@ -3,7 +3,7 @@
 // Loads what the console needs to know, builds the navigation, and opens the page named in the address.
 
 const NAV = [
-  { group: 'Understand', items: [['overview', 'Overview', 'home'], ['design', 'Design and architecture', 'book']] },
+  { group: 'Understand', items: [['overview', 'Overview', 'home'], ['design', 'Design and architecture', 'book'], ['requirements', 'Requirements', 'list']] },
   { group: 'Explore', items: [['records', 'Records', 'records'], ['assets', 'Assets', 'image']] },
   { group: 'Act', items: [['events', 'Send events', 'send'], ['workbench', 'API workbench', 'tool']] },
   { group: 'Operate', items: [['ops', 'Queue and admin', 'pulse']] },

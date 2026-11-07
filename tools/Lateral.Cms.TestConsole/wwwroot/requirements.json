@@ -1,0 +1,2565 @@
+{
+  "about": "Generated from docs/REQUIREMENTS.md by tools/requirements/build.mjs. Do not edit by hand.",
+  "areas": [
+    "Event semantics",
+    "Ingestion",
+    "Asynchronous processing",
+    "Storage",
+    "Read API and admin override",
+    "Security",
+    "Observability",
+    "Testing and delivery",
+    "Developer tooling",
+    "Assets",
+    "Content scanner",
+    "Security hardening"
+  ],
+  "rows": [
+    {
+      "id": "EV-01",
+      "area": "Event semantics",
+      "text": "A publish for an unknown id creates it: published, the event's version, payload stored whole and never merged",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-02",
+      "area": "Event semantics",
+      "text": "A publish with a higher version replaces version, payload and checksum. A lower version is `ignored_stale` (`older_version`). Equal version and newer timestamp applies (state can flip back to published). Equal version and older timestamp is `ignored_stale` (`older_timestamp`)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M03"
+      ],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 4
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-03",
+      "area": "Event semantics",
+      "text": "An exact duplicate (version, instant, kind, content) is `ignored_duplicate`; replaying a whole stream changes nothing",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "P",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "ReducerPropertyTests",
+          "count": 1
+        },
+        {
+          "name": "ReducerTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-04",
+      "area": "Event semantics",
+      "text": "An unPublish keeps the row and payload and marks it unpublished; users stop seeing it, admins still do",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-05",
+      "area": "Event semantics",
+      "text": "An unPublish for an id never seen (X, then X+1 unpublished with no publish between) creates the entity from the event's payload, unpublished",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M36"
+      ],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-06",
+      "area": "Event semantics",
+      "text": "A delete removes the entity row and payload and leaves a payload-free tombstone (id, newest delete time). A raw-SQL check finds no `Entities` row and no content in the tombstone",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M37"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 1
+        },
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-07",
+      "area": "Event semantics",
+      "text": "Events at or before the tombstone are `ignored_stale` (`superseded_by_delete`); a newer publish recreates the entity with the admin override cleared",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "P",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M01",
+        "M31"
+      ],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "ReducerTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-08",
+      "area": "Event semantics",
+      "text": "Delete edge cases: nothing stored gives `tombstone_only`; older than the stored state gives `newer_state_exists` but still raises the tombstone; at or below the tombstone is duplicate or stale",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "P",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M05",
+        "M32"
+      ],
+      "tests": [
+        {
+          "name": "ReducerTests",
+          "count": 4
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-09",
+      "area": "Event semantics",
+      "text": "Order independence: every arrival order of a timeline ends in the same state. Evidence: the set-based oracle (Appendix A) on at least 20,000 seeded random timelines per run, and every permutation of at least 10 curated timelines of up to 7 events",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "P",
+        "M"
+      ],
+      "limit": "K8",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M02"
+      ],
+      "tests": [
+        {
+          "name": "DomainArchitectureTests",
+          "count": 2
+        },
+        {
+          "name": "ReducerPropertyTests",
+          "count": 4
+        },
+        {
+          "name": "ReducerTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-10",
+      "area": "Event semantics",
+      "text": "Deterministic ties: unPublish beats publish at equal version and instant; contradicting content at equal version, instant and kind resolves to the greater payload text with `same_version_different_content`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "P",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M02",
+        "M04"
+      ],
+      "tests": [
+        {
+          "name": "ReducerTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-11",
+      "area": "Event semantics",
+      "text": "Version is an integer ≥ 1; gaps are allowed; the first version is 1",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EventParserTests",
+          "count": 23
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-12",
+      "area": "Event semantics",
+      "text": "Batch-partition independence: splitting a stream into batches any way, and applying the batches in any order, gives the same final state",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "P",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 2
+        },
+        {
+          "name": "ReducerPropertyTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-13",
+      "area": "Event semantics",
+      "text": "An unknown event type is reported per event (`ignored_unsupported_type`), gets an `Events` row, and never fails the batch",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-14",
+      "area": "Event semantics",
+      "text": "The entity keeps the latest version; a lower or equal version never overwrites; a stale concurrent write is refused (concurrency token) and the attempt fails and retries",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "F"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M11"
+      ],
+      "tests": [
+        {
+          "name": "PersistenceGuaranteeTests",
+          "count": 4
+        },
+        {
+          "name": "ReducerTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-15",
+      "area": "Event semantics",
+      "text": "The admin override is its own column. CMS events never write it. A later publish does not clear it; only delete then re-create does",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M06"
+      ],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        },
+        {
+          "name": "OverrideAndPolicyTests",
+          "count": 2
+        },
+        {
+          "name": "ReducerTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "EV-16",
+      "area": "Event semantics",
+      "text": "The ordering assumption (S17) is stated exactly in DESIGN, and the counterexample in §2.4 item 2 is pinned by a test that asserts the divergence. (Could) an applied higher version with an earlier timestamp is logged with reason `timestamp_regression`",
+      "pri": "MUST",
+      "priNote": "MUST / COULD",
+      "evidence": [
+        "P",
+        "D"
+      ],
+      "limit": "K8",
+      "status": "Done; the optional `timestamp_regression` log is not built",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "ReducerPropertyTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-01",
+      "area": "Ingestion",
+      "text": "`POST /cms/events` takes a JSON array; only the CMS account may call it",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 18
+        },
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        },
+        {
+          "name": "RoleMatrixTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-02",
+      "area": "Ingestion",
+      "text": "Basic auth. The CMS username is 10 to 20 characters and each CMS password parses as a GUID, both checked at startup (the service refuses to start otherwise). Several passwords may be active so one can be rotated without downtime",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AuthOptionsTests",
+          "count": 12
+        },
+        {
+          "name": "StartupValidationTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-03",
+      "area": "Ingestion",
+      "text": "Per-event validation gives the stable reason codes in §4.5, with a boundary-pass and a boundary-fail input for every rule (id 200 and 201 characters, version 0 and 1, 7 and 8 fractional digits, the skew limit)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "V"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EventParserTests",
+          "count": 23
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-04",
+      "area": "Ingestion",
+      "text": "One bad event never blocks its neighbours. The response lists every event's outcome, reason and checksum. A batch holding only rejected events is `200`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 3
+        },
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-05",
+      "area": "Ingestion",
+      "text": "Sanitising is normalising: trim ids, UTC timestamps, compact canonical payload, control characters rejected in ids, untrusted type text masked and bounded. Values are never altered or HTML-escaped",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "V"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EventParserTests",
+          "count": 23
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-06",
+      "area": "Ingestion",
+      "text": "Limits: a declared `Content-Length` over the cap is `413` *before any body is read* (a stalled declared 10 GiB body is refused without waiting); batch of 501 is `413`; payload over 256 KiB rejects that event; depth over 32 rejects the request; invalid JSON or a non-array is `400`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M08"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "IngestionLimitsTests",
+          "count": 5
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-07",
+      "area": "Ingestion",
+      "text": "Every validated publish and unPublish gets a checksum over its canonical text. It is returned in the response, stored with the entity, served by the API and recorded in the ledger. A test recomputes every stored row after a mixed workload and finds no mismatch",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "V",
+        "I",
+        "M"
+      ],
+      "limit": "K10",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M07"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "ChecksumEndpointTests",
+          "count": 12
+        },
+        {
+          "name": "PayloadChecksumTests",
+          "count": 7
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "IN-08",
+      "area": "Ingestion",
+      "text": "Status codes and `Retry-After` exactly as the §4.5 table; errors are problem+json with a stable `code` and never echo payloads",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "V"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 31
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-01",
+      "area": "Asynchronous processing",
+      "text": "The answer follows a durable commit. A database failure at accept gives `503` and stores nothing; a `202` is never sent first",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "F",
+        "I",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M25"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "IngestionEndpointTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-02",
+      "area": "Asynchronous processing",
+      "text": "Accepting is one transaction; applying is one transaction (state, outcomes, payload purge, batch completion). A failure, crash or shutdown leaves the batch exactly as it was; nothing is half applied",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "F",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M15"
+      ],
+      "tests": [
+        {
+          "name": "InboxFailureTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-03",
+      "area": "Asynchronous processing",
+      "text": "A background worker applies batches, takedown batches first then oldest; it wakes on accept and polls when idle",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K3",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M17",
+        "M40"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 2
+        },
+        {
+          "name": "InboxWorkerTests",
+          "count": 7
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-04",
+      "area": "Asynchronous processing",
+      "text": "A failing batch is retried with doubling back-off (2 s up to 60 s), set aside as `failed` after 5 attempts without blocking later batches, and can be requeued by an admin. The worker survives any exception and a storage outage",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "F",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M18",
+        "M19",
+        "M22",
+        "M23",
+        "M24",
+        "M26"
+      ],
+      "tests": [
+        {
+          "name": "InboxFailureTests",
+          "count": 9
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-05",
+      "area": "Asynchronous processing",
+      "text": "The queue is bounded by `Inbox:MaxBytes`: past it, `429 inbox_full` + `Retry-After` and nothing stored; concurrent senders cannot get past the cap",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "C",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M20",
+        "M21"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "InboxBackpressureTests",
+          "count": 4
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-06",
+      "area": "Asynchronous processing",
+      "text": "`GET /cms/batches/{id}` (CMS and admin) returns `queued`, `completed` or `failed` with per-event outcomes; never payloads; unknown id is `404`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A",
+        "L"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 4
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-07",
+      "area": "Asynchronous processing",
+      "text": "`GET /api/admin/ingestion` reports pending batches and events, oldest age, bytes used and failed batches; requeue follows §4.2",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "InboxFailureTests",
+          "count": 9
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-08",
+      "area": "Asynchronous processing",
+      "text": "Batches accepted before a restart are applied after it, once",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "F"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "InboxWorkerTests",
+          "count": 7
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-09",
+      "area": "Asynchronous processing",
+      "text": "A queued payload exists only in its `Events` row and is nulled in the apply transaction; the `CHECK` makes any other state impossible; a delete leaves no copy of an earlier publish in the queue or the ledger",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "V",
+        "M"
+      ],
+      "limit": "K6",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M14",
+        "M16"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 3
+        },
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-10",
+      "area": "Asynchronous processing",
+      "text": "Accepting reads no entity state; applying reads it in two queries however large the batch; the pick query uses its index with no sort",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "Q"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AsyncQueryCountTests",
+          "count": 2
+        },
+        {
+          "name": "InboxIndexTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AS-11",
+      "area": "Asynchronous processing",
+      "text": "DESIGN states the choice and why: alternatives (synchronous, in-memory async, durable async), trade-offs, who calls and what each expects, the measured throughput, and what the queue does *not* do (it does not raise the single-writer ceiling)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "D"
+      ],
+      "limit": "K1 K2",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-01",
+      "area": "Storage",
+      "text": "EF Core on SQLite; one migration creates the final schema; applied at startup unless switched off",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K15",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "StartupValidationTests",
+          "count": 3
+        },
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-02",
+      "area": "Storage",
+      "text": "Separate write and read contexts. The read context is no-tracking, opened read-only (`Mode=ReadOnly`) and throws on `SaveChanges`. The write context is used by ingestion and the admin override only",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M10"
+      ],
+      "tests": [
+        {
+          "name": "PersistenceGuaranteeTests",
+          "count": 4
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-03",
+      "area": "Storage",
+      "text": "WAL mode; writers serialised by one in-process gate; `synchronous` left at FULL; concurrency token renewed on every save",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "C",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M11"
+      ],
+      "tests": [
+        {
+          "name": "ConnectionPoolTests",
+          "count": 2
+        },
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-04",
+      "area": "Storage",
+      "text": "All timestamps are UTC and come back with `Kind = Utc`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-05",
+      "area": "Storage",
+      "text": "The schema enforces what code assumes: the payload `CHECK`, unique (`BatchId`, `Sequence`), unique `BatchId`. A raw-SQL insert that breaks one fails",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-06",
+      "area": "Storage",
+      "text": "`secure_delete=ON` on every connection. After a delete (and after a payload is nulled) plus `wal_checkpoint(TRUNCATE)`, a unique marker string is absent from the database file and the WAL",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K6",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M13"
+      ],
+      "tests": [
+        {
+          "name": "StorageGuaranteeTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "ST-07",
+      "area": "Storage",
+      "text": "Payload stored inline, at most `MaxPayloadBytes`; media is referenced (address, type, size, checksum), never carried",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K11",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "IngestionLimitsTests",
+          "count": 5
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-01",
+      "area": "Read API and admin override",
+      "text": "`GET /api/entities` (keyset cursor, default 50, max 100, bad cursor is `400`) and `GET /api/entities/{id}`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K13",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-02",
+      "area": "Read API and admin override",
+      "text": "Users see published and not-disabled entities. Admins see everything, with a `status` block. Same endpoints; the server decides from the caller's role only; no query parameter widens it",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M33",
+        "M34"
+      ],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-03",
+      "area": "Read API and admin override",
+      "text": "A hidden entity returns the same `404` as a missing one",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-04",
+      "area": "Read API and admin override",
+      "text": "No route updates, replaces or deletes an entity. The only entity writes are admin disable and enable (idempotent, logged with who). A route-inventory test proves it",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "RouteAndTransportTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-05",
+      "area": "Read API and admin override",
+      "text": "Disable changes only the override columns; payload, version and published flag are untouched and the CMS is not involved",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-06",
+      "area": "Read API and admin override",
+      "text": "Reads project to a DTO, track nothing, use no `Include`, write the stored payload text raw, use the partial index with no sort, and cost a constant number of queries per page",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "Q",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M12"
+      ],
+      "tests": [
+        {
+          "name": "ListingIndexTests",
+          "count": 3
+        },
+        {
+          "name": "QueryCountTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-07",
+      "area": "Read API and admin override",
+      "text": "`/health` is anonymous and returns only `{\"status\":\"ok\"}` (or 503) after a database check",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "AP-08",
+      "area": "Read API and admin override",
+      "text": "Responses carry `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and a restrictive CSP",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-01",
+      "area": "Security",
+      "text": "Deny by default: a fallback policy requires sign-in; only `/health` is anonymous. A test enumerates every mapped route and fails if one has no row in the role matrix",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "A",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M29"
+      ],
+      "tests": [
+        {
+          "name": "OverrideAndPolicyTests",
+          "count": 1
+        },
+        {
+          "name": "RoleMatrixTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-02",
+      "area": "Security",
+      "text": "Least privilege exactly as the §4.6 table: the CMS cannot read entities; users and admins cannot ingest; only admins disable, enable and administer the queue",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "A",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M27",
+        "M28"
+      ],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 18
+        },
+        {
+          "name": "RoleMatrixTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-03",
+      "area": "Security",
+      "text": "Credentials are compared in constant time (hash both sides, `FixedTimeEquals`, every account always evaluated). `401` carries `WWW-Authenticate: Basic`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "U"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 18
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-04",
+      "area": "Security",
+      "text": "Basic-auth valid and invalid combinations are covered (§6.3, suite T9)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "BasicAuthTests",
+          "count": 18
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-05",
+      "area": "Security",
+      "text": "A failed-sign-in throttle per client address answers `429` + `Retry-After`, with an injected clock",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AuthThrottleTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-06",
+      "area": "Security",
+      "text": "No credentials in `appsettings.json`; development credentials only in `appsettings.Development.json`; missing or malformed credentials stop startup and name the setting",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AuthOptionsTests",
+          "count": 12
+        },
+        {
+          "name": "DeliveryTests",
+          "count": 1
+        },
+        {
+          "name": "StartupValidationTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-07",
+      "area": "Security",
+      "text": "No payload, password or `Authorization` header in any log, on success, rejection, 401 and failure paths; the login-failure log omits the submitted username",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "L",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M30"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-08",
+      "area": "Security",
+      "text": "Production enables HTTPS redirection and HSTS; the docs say Basic auth is only safe over TLS",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "D"
+      ],
+      "limit": "K5",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "RouteAndTransportTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-09",
+      "area": "Security",
+      "text": "Hostile input is bounded: size, count, depth, strict UTF-8, control characters, far-future timestamps, lone surrogates",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EventParserTests",
+          "count": 23
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "SE-10",
+      "area": "Security",
+      "text": "Admin actions are logged with who and what",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "L"
+      ],
+      "limit": "K14",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "EntitiesEndpointTests",
+          "count": 11
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-01",
+      "area": "Observability",
+      "text": "Every event is logged, failing ones included, with batch id, index, id, type, version, outcome, reason and checksum. Applied and duplicate: Information. Stale, unsupported, rejected and applied-by-conflict: Warning. A failed batch: Error",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "L",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M38",
+        "M39"
+      ],
+      "tests": [
+        {
+          "name": "AcceptanceTests",
+          "count": 1
+        },
+        {
+          "name": "ObservabilityTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-02",
+      "area": "Observability",
+      "text": "The batch id is the `X-Correlation-Id` header, a property of every log line and the key in `Batches` and `Events`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "L"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "ObservabilityTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-03",
+      "area": "Observability",
+      "text": "`Events` is the ledger: a row per event received, rejected ones included, with `ReceivedAt` and `ProcessedAt`; no payload once decided",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K6",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "IngestionEndpointTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-04",
+      "area": "Observability",
+      "text": "Meter `Lateral.Cms` with bounded tags: events processed (outcome, type), queued, apply and accept duration, queue lag, retries, set-asides, and gauges pending, oldest age and failed",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K12",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "ObservabilityTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-05",
+      "area": "Observability",
+      "text": "Worker health is visible: a log when a batch is applied (with its wait), a Warning per failed attempt, an Error when a batch is set aside or the worker faults",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "L"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "InboxFailureTests",
+          "count": 9
+        },
+        {
+          "name": "InboxWorkerTests",
+          "count": 7
+        },
+        {
+          "name": "ShutdownTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "OB-06",
+      "area": "Observability",
+      "text": "DESIGN lists the alerts an operator needs, including \"the CMS has gone quiet\"",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "D"
+      ],
+      "limit": "K12",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-01",
+      "area": "Testing and delivery",
+      "text": "Event-processing tests as §6.3 suites T1, T2, T6",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [],
+      "limit": "",
+      "status": "Done (aggregate of T1, T2, T6)",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-02",
+      "area": "Testing and delivery",
+      "text": "Ingestion-constraint tests as §6.3 suites T3, T5",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [],
+      "limit": "",
+      "status": "Done (aggregate of T3, T5)",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-03",
+      "area": "Testing and delivery",
+      "text": "Basic-auth tests as §6.3 suite T9",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [],
+      "limit": "",
+      "status": "Done (aggregate of T9)",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-04",
+      "area": "Testing and delivery",
+      "text": "The suite is hermetic, finishes in under 60 s, and passes 20 consecutive full runs",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "O"
+      ],
+      "limit": "",
+      "status": "Done: 20 consecutive full runs passed, well inside the limit (the count and timings are in [EVIDENCE](EVIDENCE.md#1-build-and-tests))",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-05",
+      "area": "Testing and delivery",
+      "text": "Every MUST row names at least one test through `[Trait(\"req\",\"ID\")]`; a meta-test fails if one does not",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "D"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "DeliveryTests",
+          "count": 3
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-06",
+      "area": "Testing and delivery",
+      "text": "A mutation log in `docs/EVIDENCE.md`: at least 25 deliberate defects (§6.4), each caught by a named test",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "M"
+      ],
+      "limit": "K16",
+      "status": "Done: every deliberate defect in the log is caught (the log and its count are in [EVIDENCE](EVIDENCE.md#2-deliberate-defects-mutation-log))",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "DeliveryTests",
+          "count": 2
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "TE-07",
+      "area": "Testing and delivery",
+      "text": "A load smoke (§6.5) is in the repo and its results are recorded with machine and date",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "B"
+      ],
+      "limit": "K2",
+      "status": "Done: [EVIDENCE](EVIDENCE.md#3-measurements)",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-01",
+      "area": "Testing and delivery",
+      "text": "A .NET 9 solution (`net9.0`, `RollForward=Major` so it runs where only a newer runtime is installed)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "S"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "DeliveryTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-02",
+      "area": "Testing and delivery",
+      "text": "README: prerequisites, run, a try-it flow that includes following a batch, tests, configuration, running outside Development, database and migrations, ranked limitations",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "D",
+        "O"
+      ],
+      "limit": "",
+      "status": "Done; the try-it commands were run against the built service ([EVIDENCE](EVIDENCE.md#4-operated))",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-03",
+      "area": "Testing and delivery",
+      "text": "A CI job runs the README's try-it commands against the built service",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "O"
+      ],
+      "limit": "",
+      "status": "CI job written; not run (needs a push)",
+      "statusKind": "partly",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-04",
+      "area": "Testing and delivery",
+      "text": "CI builds and tests on Windows, macOS and Linux with warnings as errors; no OS-specific paths",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "O"
+      ],
+      "limit": "",
+      "status": "Workflow written; run locally on Windows only; macOS and Linux not run (needs a push)",
+      "statusKind": "partly",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-05",
+      "area": "Testing and delivery",
+      "text": "A GitHub repository holds all of the above. The remote is the user's decision; never push unasked",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [],
+      "limit": "",
+      "status": "Open: no remote, never pushed (the owner decides)",
+      "statusKind": "open",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DL-06",
+      "area": "Testing and delivery",
+      "text": "Five docs with one job each (D7); relative links resolve (a link test); no number typed by hand that a test or script can produce",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "D"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "DeliveryTests",
+          "count": 1
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "DV-01",
+      "area": "Developer tooling",
+      "text": "A test console that listens on loopback only, keeps credentials on its server, refuses cross-site and DNS-rebinding requests, reaches only an allow-list of the service's routes and builds no markup from text it was given",
+      "pri": "COULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K17",
+      "status": "Done; its tests are in the separate `Lateral.Cms.TestConsole.Tests` project, which does not use requirement ids",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DV-02",
+      "area": "Developer tooling",
+      "text": "A fenced test-only reset: off by default, not mapped unless switched on, refused at startup in Production, admin only, exact confirmation body, runs in one transaction, logged with who and counts. It also empties the queue",
+      "pri": "COULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K17",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M41",
+        "M42"
+      ],
+      "tests": [
+        {
+          "name": "AsyncResetTests",
+          "count": 1
+        },
+        {
+          "name": "ResetEndpointTests",
+          "count": 7
+        }
+      ],
+      "origin": "brief"
+    },
+    {
+      "id": "DV-03",
+      "area": "Developer tooling",
+      "text": "A one-click Visual Studio launch profile for the service and the console",
+      "pri": "COULD",
+      "priNote": "",
+      "evidence": [
+        "O"
+      ],
+      "limit": "",
+      "status": "Copied from the first build; not verified (needs Visual Studio)",
+      "statusKind": "partly",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "DV-04",
+      "area": "Developer tooling",
+      "text": "The S3 comparison and the generated diagrams, updated for the new design",
+      "pri": "COULD",
+      "priNote": "",
+      "evidence": [
+        "D"
+      ],
+      "limit": "",
+      "status": "Done: the diagrams are generated by `tools/diagrams` and shown in the console and in the README and DESIGN; the S3 comparison was deliberately not ported (a CMS demo does not pursue an S3 alternative)",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [],
+      "origin": "brief"
+    },
+    {
+      "id": "BL-01",
+      "area": "Assets",
+      "text": "Upload: a single streamed `PUT` up to `Assets:MaxSimpleBytes`; S3-style multipart above it (initiate, parts sent in parallel, each checksummed and replaceable, complete) up to `Assets:MaxObjectBytes`. Every refusal (bad key, checksum, size, part list, expired or unknown upload) stores nothing and leaves no file",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "V",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M44",
+        "M45",
+        "M46"
+      ],
+      "tests": [
+        {
+          "name": "UploadTests",
+          "count": 18
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-02",
+      "area": "Assets",
+      "text": "Only the CMS account uploads; the CMS and admins see an asset's state; users and admins download; only admins delete, re-scan or requeue. Every asset route has a row in the role matrix",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "A"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "RoleMatrixTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-03",
+      "area": "Assets",
+      "text": "Downloads stream with `Range` (single, suffix, open-ended; `206`, `416`), `If-Range`, `ETag` (the SHA-256) and `If-None-Match` (`304`), `HEAD`; many ranges can be read in parallel and reassemble to the original hash. Served as an attachment, typed by what the scanner detected, with `nosniff`, a sandbox CSP and `no-store`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M47",
+        "M48"
+      ],
+      "tests": [
+        {
+          "name": "DownloadTests",
+          "count": 9
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-04",
+      "area": "Assets",
+      "text": "Only a **clean** asset is ever served: quarantined, rejected and set-aside assets are the same `404` as a missing one, to users and admins alike",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M43"
+      ],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 15
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-05",
+      "area": "Assets",
+      "text": "The store is bounded: a total cap (`429` with `Retry-After`, nothing stored, parts in flight counted), a per-object cap, and a per-caller cap on concurrent downloads",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "C",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M49"
+      ],
+      "tests": [
+        {
+          "name": "DownloadTests",
+          "count": 1
+        },
+        {
+          "name": "HousekeepingTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-06",
+      "area": "Assets",
+      "text": "Housekeeping: unfinished uploads expire; the sweeper removes expired uploads and files no row accounts for (stray parts, quarantine files, blobs, temp files) and never takes a young file or one that is accounted for",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M50"
+      ],
+      "tests": [
+        {
+          "name": "HousekeepingTests",
+          "count": 3
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-07",
+      "area": "Assets",
+      "text": "Hard delete is physical (best effort): the row goes, the bytes are overwritten with zeros even while a reader has them open, then removed; identical content is stored once and survives until the last asset using it is deleted",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K6",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M51",
+        "M52",
+        "M53"
+      ],
+      "tests": [
+        {
+          "name": "HousekeepingTests",
+          "count": 3
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "BL-08",
+      "area": "Assets",
+      "text": "Large objects are streamed, not held in memory: a 64 MiB asset is uploaded in parallel parts, scanned and downloaded while the process allocates a small fraction of its size",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M61"
+      ],
+      "tests": [
+        {
+          "name": "LargeAssetTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-01",
+      "area": "Content scanner",
+      "text": "The mock scanner recognises, deterministically and from the bytes: a test signature (and, if switched on, EICAR); executables (disguised or bare); a declared type the bytes contradict; active content in SVG, HTML and PDF; archive bombs read from the directory alone; and simulated scanner failures. It is a stand-in that proves the pipeline, **not** protection",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "M"
+      ],
+      "limit": "K19",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M58",
+        "M59",
+        "M60"
+      ],
+      "tests": [
+        {
+          "name": "ScannerTests",
+          "count": 20
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-02",
+      "area": "Content scanner",
+      "text": "Pipeline: every upload is quarantined, queued, scanned by a background worker and either cleared (moved to its content address) or rejected; the scan runs outside the write gate, so a slow scan never holds up ingestion",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "F"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 15
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-03",
+      "area": "Content scanner",
+      "text": "Fail closed: a scanner error, a timeout or a missing file leaves the asset quarantined and unserved, retries with doubling back-off, and after the maximum sets it aside (still unserved) until an admin requeues it; a requeue never skips the scan",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "F",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M54",
+        "M55"
+      ],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-04",
+      "area": "Content scanner",
+      "text": "A rejected asset's bytes are overwritten and removed from disk; only its verdict, signature, checksum and times remain; assets sharing its content are rejected with it",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K6",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M56"
+      ],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-05",
+      "area": "Content scanner",
+      "text": "Assets cleared by an older scanner version can be re-queued, and are not served until cleared again; an admin can re-scan any clean asset",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M57"
+      ],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SC-06",
+      "area": "Content scanner",
+      "text": "Uploads, verdicts and admin asset actions are recorded in an append-only audit log, in the same transaction as the change, holding no content",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "K14",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "ScanPipelineTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-01",
+      "area": "Security hardening",
+      "text": "No credential is committed: settings files hold none, and in Development without supplied credentials random ones are generated once into a git-ignored file (never in any other environment, never over supplied ones)",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M67"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 5
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-02",
+      "area": "Security hardening",
+      "text": "The memory a burst of senders can use is bounded: only `Ingestion:MaxConcurrentAccepts` batches are read at once, a queue absorbs bursts, and overflow gets `429` with `Retry-After`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "C",
+        "M"
+      ],
+      "limit": "K1",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M66"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-03",
+      "area": "Security hardening",
+      "text": "The failed-sign-in throttle keys on the real client: `X-Forwarded-For` is believed only from proxies named in configuration, and ignored (so it cannot be forged to dodge the throttle) otherwise; invalid proxy settings stop startup",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M65"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 3
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-04",
+      "area": "Security hardening",
+      "text": "The test-only reset is an allow-list: it exists in Development, or in another environment only when named on purpose (`Admin:ResetAllowedEnvironment`), and never in Production",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K17",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M64"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-05",
+      "area": "Security hardening",
+      "text": "Admin actions (disable, enable, requeue, reset, asset delete and re-scan) are audited with who and what, in the same transaction; the audit log cannot be updated or deleted, and a reset keeps it",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K14",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M62",
+        "M63"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 2
+        },
+        {
+          "name": "ScanPipelineTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-06",
+      "area": "Security hardening",
+      "text": "Failed batches cannot quietly fill the queue: their bytes are reported by the admin report, a gauge and the refusal log",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M69"
+      ],
+      "tests": [
+        {
+          "name": "HardeningTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-08",
+      "area": "Security hardening",
+      "text": "Input that cannot be read is a `400` with a problem body in every environment, never a `500`: a bad query value, a body that is not JSON, an unknown enum value (ASP.NET throws for these in Development unless told not to). A range in a unit other than bytes is ignored",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M76"
+      ],
+      "tests": [
+        {
+          "name": "BadInputTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "SH-07",
+      "area": "Security hardening",
+      "text": "The test console, which holds live credentials, refuses to start outside Development unless told to",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "M"
+      ],
+      "limit": "K17",
+      "status": "Done; its tests are in the separate `Lateral.Cms.TestConsole.Tests` project, which does not use requirement ids",
+      "statusKind": "done",
+      "mutations": [
+        "M68"
+      ],
+      "tests": [],
+      "origin": "added"
+    },
+    {
+      "id": "DX-01",
+      "area": "Security hardening",
+      "text": "The engineering console's endpoint catalogue (`endpoints.json`, which drives its API workbench and curl generator) lists exactly the routes the service maps, names the same callers the role matrix proves, and explains the responses each can give",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M78"
+      ],
+      "tests": [
+        {
+          "name": "EndpointCatalogueTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "DX-02",
+      "area": "Security hardening",
+      "text": "The engineering console's Requirements page traces every original requirement in the brief to how it was met, with its tests and a live check. The brief's words are verbatim; an item is \"met\" only if every requirement row it cites is Done; anything partly or not met says what is missing; and the generated requirements data (`requirements.json`) matches this document",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M",
+        "D"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M80",
+        "M81"
+      ],
+      "tests": [
+        {
+          "name": "RequirementsTraceTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    }
+  ]
+}

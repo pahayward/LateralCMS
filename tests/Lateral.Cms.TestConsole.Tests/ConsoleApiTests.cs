@@ -412,7 +412,7 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     // Every script the two pages load.
     private static readonly string[] AllScripts =
     [
-        "eng-core.js", "eng-overview.js", "eng-design.js", "eng-records.js", "eng-events.js", "eng-assets.js", "eng-workbench.js",
+        "eng-core.js", "eng-overview.js", "eng-design.js", "eng-requirements.js", "eng-records.js", "eng-events.js", "eng-assets.js", "eng-workbench.js",
         "eng-ops.js", "eng-verify.js", "eng-start.js", "photos-lib.js", "photos-store.js", "photos-app.js",
     ];
 
@@ -447,7 +447,7 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     {
         var client = _factory.CreateClient();
 
-        foreach (var path in new[] { "/endpoints.json", "/diagrams/architecture.json", "/diagrams/event-lifecycle.json", "/diagrams/asset-lifecycle.json" })
+        foreach (var path in new[] { "/endpoints.json", "/requirements.json", "/brief-trace.json", "/diagrams/architecture.json", "/diagrams/event-lifecycle.json", "/diagrams/asset-lifecycle.json" })
         {
             var text = await client.GetStringAsync(path);
             using var document = System.Text.Json.JsonDocument.Parse(text);

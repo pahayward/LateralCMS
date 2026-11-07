@@ -634,5 +634,21 @@
     "file": "tools/Lateral.Cms.TestConsole/wwwroot/diagrams/architecture.json",
     "find": "\"src/Lateral.Cms/Ingestion/AcceptService.cs\"",
     "replace": "\"src/Lateral.Cms/Ingestion/AcceptServiceGone.cs\""
+  },
+  {
+    "id": "M80",
+    "area": "Console",
+    "rule": "the requirements document quietly calls the unpushed repository done",
+    "file": "docs/REQUIREMENTS.md",
+    "find": "Open: no remote, never pushed (the owner decides)",
+    "replace": "Done"
+  },
+  {
+    "id": "M81",
+    "area": "Console",
+    "rule": "the requirements page claims the repository requirement is met",
+    "file": "tools/Lateral.Cms.TestConsole/wwwroot/brief-trace.json",
+    "find": "\"id\": \"R8.4\",\n          \"status\": \"open\"",
+    "replace": "\"id\": \"R8.4\",\n          \"status\": \"met\""
   }
 ]

@@ -398,3 +398,31 @@ td.pass { color: var(--ok); font-weight: 700; text-align: center; }
 details > summary { cursor: pointer; }
 details.card > summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .log-bad, .log-ok { white-space: pre-wrap; }
+
+/* ---------------------------------------------------------------- requirements */
+
+.nowrap { white-space: nowrap; }
+.table-wrap.tall { max-height: none; overflow: visible; border: 0; }
+table.trace td, table.reqs td { vertical-align: top; padding: 10px 12px; }
+table.trace { table-layout: fixed; }
+table.trace th:nth-child(1) { width: 48px; }
+table.trace th:nth-child(2) { width: 25%; }
+table.trace th:nth-child(4) { width: 22%; }
+table.trace th:nth-child(5) { width: 96px; }
+table.trace td { overflow-wrap: anywhere; }
+table.reqs { table-layout: fixed; }
+table.reqs th:nth-child(1) { width: 72px; }
+table.reqs th:nth-child(3) { width: 78px; }
+table.reqs th:nth-child(4) { width: 110px; }
+table.reqs th:nth-child(5) { width: 24%; }
+table.reqs th:nth-child(6) { width: 20%; }
+table.reqs td { overflow-wrap: anywhere; }
+table.trace td p, table.reqs td p { margin: 0 0 6px; }
+.brief-quote { margin: 0; padding: 0 0 0 10px; border-left: 3px solid var(--line); color: var(--ink); font-style: italic; }
+table.trace details { margin-top: 6px; }
+table.trace details summary, .card details summary { color: var(--muted); font-size: 12.5px; }
+.seg-btn { padding: 4px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--ink); font: 500 12.5px var(--sans); cursor: pointer; }
+.seg-btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button.chip { border: 0; cursor: pointer; font-family: inherit; }
+button.chip:hover { filter: brightness(0.95); text-decoration: underline; }
+tr:target td { background: var(--accent-soft); }

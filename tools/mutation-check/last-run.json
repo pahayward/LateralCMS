@@ -1279,5 +1279,31 @@
     "failed": [
       "Lateral.Cms.Tests.Delivery.EndpointCatalogueTests.A_diagram_describes_real_files_and_real_tests_and_every_walkthrough_step_points_at_a_real_box"
     ]
+  },
+  {
+    "id": "M80",
+    "area": "Console",
+    "rule": "the requirements document quietly calls the unpushed repository done",
+    "file": "docs/REQUIREMENTS.md",
+    "find": "Open: no remote, never pushed (the owner decides)",
+    "replace": "Done",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M81",
+    "area": "Console",
+    "rule": "the requirements page claims the repository requirement is met",
+    "file": "tools/Lateral.Cms.TestConsole/wwwroot/brief-trace.json",
+    "find": "\"id\": \"R8.4\",\n          \"status\": \"open\"",
+    "replace": "\"id\": \"R8.4\",\n          \"status\": \"met\"",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.An_item_is_met_only_when_every_requirement_it_cites_is_done_and_anything_less_says_what_is_missing"
+    ]
   }
 ]
