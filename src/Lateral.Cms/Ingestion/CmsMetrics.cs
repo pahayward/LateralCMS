@@ -37,6 +37,7 @@ public sealed class CmsMetrics : IDisposable
 
         _meter.CreateObservableGauge("cms.queue.pending", () => backlog.PendingBatches, description: "Batches waiting to be applied.");
         _meter.CreateObservableGauge("cms.queue.failed", () => backlog.FailedBatches, description: "Batches set aside as failed, waiting for an admin.");
+        _meter.CreateObservableGauge("cms.queue.failed_bytes", () => backlog.FailedBytes, unit: "By", description: "Payload bytes held by set-aside batches. They count against the queue cap: alert before they fill it.");
         _meter.CreateObservableGauge("cms.queue.oldest_age", () => backlog.OldestPendingAgeSeconds, unit: "s", description: "Age of the longest-waiting pending batch.");
     }
 

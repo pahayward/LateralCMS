@@ -73,8 +73,11 @@ this file is the standard they are held to.
 6. **The admin override is its own column** that CMS events never write.
 7. **All timestamps are UTC,** normalised on the way in.
 8. **Sanitising means normalising,** not altering content. Escaping for display belongs to the consumer.
-9. **Payloads are bounded entity fields; media is referenced, never carried.** A large file stays in the CMS's media
-   store and the payload holds its address, type, size and checksum. Nothing here stores or serves binary content.
+9. **Payloads are bounded entity fields; files are never carried in an event.** A payload names a file (address, type, size,
+   checksum); the file itself goes through the asset store, where it is streamed to disk, scanned, and served only once clean.
+10. **Uploaded content is untrusted until a scanner clears it, and every failure to scan fails closed.** Store it apart (quarantine),
+    judge its type from its bytes, never serve anything but a clean asset, serve it as an attachment with `nosniff` and a sandbox
+    CSP, and wipe what is rejected or deleted.
 
 ## 5. API behaviour
 

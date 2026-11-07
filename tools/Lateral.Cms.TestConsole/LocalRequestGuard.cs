@@ -15,7 +15,10 @@ public static class LocalRequestGuard
     public static IApplicationBuilder UseLocalRequestGuard(this IApplicationBuilder app) =>
         app.Use(async (context, next) =>
         {
-            if (context.Request.Path.StartsWithSegments("/api") && Refusal(context.Request) is { } reason)
+            // The API needs the custom header. Media is fetched by <img>, which cannot set one, so it gets the other checks only.
+            var isApi = context.Request.Path.StartsWithSegments("/api");
+            var isMedia = context.Request.Path.StartsWithSegments("/media");
+            if ((isApi || isMedia) && Refusal(context.Request, requireHeader: isApi) is { } reason)
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await context.Response.WriteAsJsonAsync(new { error = reason });
@@ -26,7 +29,7 @@ public static class LocalRequestGuard
         });
 
     /// <summary>Why the request must be refused, or null if it may proceed.</summary>
-    public static string? Refusal(HttpRequest request)
+    public static string? Refusal(HttpRequest request, bool requireHeader = true)
     {
         if (!LoopbackNames.Contains(request.Host.Host, StringComparer.OrdinalIgnoreCase))
         {
@@ -47,7 +50,7 @@ public static class LocalRequestGuard
             return "The request origin does not match the console.";
         }
 
-        return request.Headers[RequestHeader] == "1" ? null : $"Missing the {RequestHeader} header.";
+        return !requireHeader || request.Headers[RequestHeader] == "1" ? null : $"Missing the {RequestHeader} header.";
     }
 
     /// <summary>Headers for every response: the UI needs only its own scripts and styles and the console's own API.</summary>
@@ -56,7 +59,7 @@ public static class LocalRequestGuard
         {
             var headers = context.Response.Headers;
             headers.ContentSecurityPolicy =
-                "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; " +
+                "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; " +
                 "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
             headers.XContentTypeOptions = "nosniff";
             headers["Referrer-Policy"] = "no-referrer";

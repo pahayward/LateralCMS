@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Lateral.Cms.Assets;
 using Lateral.Cms.Ingestion;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -18,7 +19,7 @@ namespace Lateral.Cms.Tests.Infrastructure;
 /// Hosts the real application in memory against a throwaway SQLite file, with known test credentials and a clock that
 /// only moves when the test moves it. The background worker is off unless a test asks for it, so a test decides exactly
 /// when queued batches are applied (<see cref="StepAsync"/>, <see cref="DrainAsync"/>) and never has to sleep.
-/// Environment "Testing" means appsettings.Development.json (and its dev credentials) is not loaded.
+/// Environment "Testing" means the Development environment's generated credentials are not used; the accounts below are.
 /// </summary>
 public class CmsFactory : WebApplicationFactory<Program>
 {
@@ -55,6 +56,12 @@ public class CmsFactory : WebApplicationFactory<Program>
 
     public string DatabasePath => _databasePath;
 
+    /// <summary>Where this factory's asset bytes live (its own folder, removed on dispose).</summary>
+    public string AssetsPath => _databasePath + "-assets";
+
+    /// <summary>Whether the real asset scan worker and sweeper run. Off by default; tests drive the processors themselves.</summary>
+    protected virtual bool AssetWorkerEnabled => false;
+
     /// <summary>Whether the real background worker runs. Off by default; tests drive the processor themselves.</summary>
     protected virtual bool WorkerEnabled => false;
 
@@ -79,6 +86,8 @@ public class CmsFactory : WebApplicationFactory<Program>
             ["Auth:Users:1:Role"] = "Admin",
             // Many tests deliberately fail to sign in; the throttle has its own dedicated tests.
             ["Auth:MaxFailuresPerMinute"] = "0",
+            ["Assets:Root"] = AssetsPath,
+            ["Assets:WorkerEnabled"] = AssetWorkerEnabled ? "true" : "false",
             ["Inbox:WorkerEnabled"] = WorkerEnabled ? "true" : "false",
             ["Inbox:PollInterval"] = "00:00:00.050",
             ["Inbox:FaultDelay"] = "00:00:00.050",
@@ -128,6 +137,38 @@ public class CmsFactory : WebApplicationFactory<Program>
         await scope.ServiceProvider.GetRequiredService<BatchProcessor>().RefreshBacklogAsync(CancellationToken.None);
     }
 
+    /// <summary>Scans the next quarantined asset that is due, as the scan worker would.</summary>
+    public async Task<ScanStep> ScanStepAsync()
+    {
+        using var scope = Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<ScanProcessor>().ProcessNextAsync(CancellationToken.None);
+    }
+
+    /// <summary>Scans every asset that is due. Returns the steps taken, in order.</summary>
+    public async Task<List<ScanStep>> ScanAllAsync()
+    {
+        var steps = new List<ScanStep>();
+        for (var i = 0; i < 1_000; i++)
+        {
+            var step = await ScanStepAsync();
+            if (step == ScanStep.Idle)
+            {
+                return steps;
+            }
+
+            steps.Add(step);
+        }
+
+        throw new InvalidOperationException("The scan queue never went idle.");
+    }
+
+    /// <summary>Runs one pass of the asset sweeper.</summary>
+    public async Task<SweepReport> SweepAsync()
+    {
+        using var scope = Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<AssetSweepService>().SweepOnceAsync(CancellationToken.None);
+    }
+
     /// <summary>Applies every batch that is due. Returns how many it applied.</summary>
     public async Task<int> DrainAsync()
     {
@@ -174,8 +215,8 @@ public class CmsFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>Error-level log lines so far, appended to failure messages so a 500 explains itself.</summary>
-    private string Errors() =>
-        string.Concat(Logs.Entries.Where(e => e.Level >= LogLevel.Error).TakeLast(3).Select(e => $"{Environment.NewLine}  [log] {e.Message} {e.Exception}"));
+    public string Errors() =>
+        string.Concat(Logs.Entries.Where(e => e.Level >= LogLevel.Error).TakeLast(8).Select(e => $"{Environment.NewLine}  [log] {e.Message} {e.Exception}"));
 
     public static string BatchId(JsonDocument acknowledgement) => acknowledgement.RootElement.GetProperty("batchId").GetString()!;
 
@@ -260,6 +301,18 @@ public class CmsFactory : WebApplicationFactory<Program>
             return;
         }
 
+        try
+        {
+            if (Directory.Exists(AssetsPath))
+            {
+                Directory.Delete(AssetsPath, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // Best effort: it is a temp folder.
+        }
+
         foreach (var suffix in new[] { "", "-wal", "-shm" })
         {
             try
@@ -298,6 +351,11 @@ public sealed class CapturingLoggerProvider : ILoggerProvider
 
         public void Log<TState>(
             LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            sink.Enqueue(new Entry(category, logLevel, formatter(state, exception), exception?.ToString()));
+            sink.Enqueue(new Entry(
+                category,
+                logLevel,
+                formatter(state, exception),
+                (exception ?? (state as Microsoft.EntityFrameworkCore.Diagnostics.IErrorEventData)?.Exception)?.ToString()
+                    ?? (logLevel >= LogLevel.Error ? "[state " + state?.GetType().FullName + " event " + eventId + "] " + string.Join("; ", (state as System.Collections.IEnumerable)?.Cast<object>().Select(o => o.ToString()) ?? []) : null)));
     }
 }

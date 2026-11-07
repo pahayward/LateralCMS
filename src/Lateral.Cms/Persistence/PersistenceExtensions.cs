@@ -84,10 +84,81 @@ public sealed class SecureDeleteInterceptor : DbConnectionInterceptor
     }
 }
 
+/// <summary>
+/// Opens every connection one at a time. Microsoft.Data.Sqlite's pool marks a connection active before it records who has it,
+/// and a second thread that finds the pool empty looks for "leaked" connections in that gap, takes the one being handed out and
+/// fails the first thread with "database is locked" (a 500 on a busy server). Taking the open under one lock closes the gap.
+/// The open itself is quick (a pooled connection, or one new file handle), so the wait is short.
+/// </summary>
+public sealed class SerialOpenInterceptor : DbConnectionInterceptor
+{
+    private static readonly object OpenLock = new();
+
+    /// <summary>Runs <paramref name="open"/> with no other open in progress anywhere in the process.</summary>
+    public static void Serially(Action open)
+    {
+        lock (OpenLock)
+        {
+            open();
+        }
+    }
+
+    public override InterceptionResult ConnectionOpening(DbConnection connection, ConnectionEventData eventData, InterceptionResult result)
+    {
+        OpenSerially(connection);
+        return InterceptionResult.Suppress();
+    }
+
+    public override ValueTask<InterceptionResult> ConnectionOpeningAsync(
+        DbConnection connection, ConnectionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        OpenSerially(connection);
+        return new(InterceptionResult.Suppress());
+    }
+
+    private static void OpenSerially(DbConnection connection) => Serially(connection.Open);
+}
+
+/// <summary>
+/// Logs a failed database connection with its exception, which EF's own log line leaves out, and says nothing when the
+/// open was cancelled: a worker stopping with the host cancels the open it was in the middle of, and that is not an error.
+/// EF's own category for this event is switched off (see <c>AddCmsPersistence</c>), so this is the only line.
+/// </summary>
+public sealed class ConnectionFailureLogger(ILogger<ConnectionFailureLogger> logger) : DbConnectionInterceptor
+{
+    public override void ConnectionFailed(DbConnection connection, ConnectionErrorEventData eventData) => Log(eventData);
+
+    public override Task ConnectionFailedAsync(
+        DbConnection connection, ConnectionErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        Log(eventData);
+        return Task.CompletedTask;
+    }
+
+    private void Log(ConnectionErrorEventData eventData)
+    {
+        // "unable to open database file" while the file does not exist yet is the existence probe made before the first
+        // migration; EF reports that one as expected, so it is not reported here either.
+        if (eventData.Exception is OperationCanceledException
+            || (eventData.Exception is SqliteException { SqliteErrorCode: 14 } && !File.Exists(DataSourceOf(eventData.Connection))))
+        {
+            return;
+        }
+
+        logger.LogError(eventData.Exception, "The database connection failed.");
+    }
+
+    private static string DataSourceOf(DbConnection connection) => connection.DataSource;
+}
+
 public static class PersistenceExtensions
 {
     public static IServiceCollection AddCmsPersistence(this IServiceCollection services)
     {
+        services.AddLogging(logging => logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Connection", LogLevel.None));
+        services.AddSingleton<ConnectionFailureLogger>();
+        services.AddSingleton<SerialOpenInterceptor>();
         services.AddOptions<DatabaseOptions>()
             .BindConfiguration(DatabaseOptions.SectionName)
             .ValidateDataAnnotations()
@@ -100,12 +171,18 @@ public static class PersistenceExtensions
         services.AddDbContext<CmsWriteDbContext>((provider, options) =>
             options
                 .UseSqlite(provider.GetRequiredService<DatabaseConnections>().Write)
-                .AddInterceptors(provider.GetRequiredService<SecureDeleteInterceptor>()));
+                .AddInterceptors(
+                    provider.GetRequiredService<SerialOpenInterceptor>(),
+                    provider.GetRequiredService<SecureDeleteInterceptor>(),
+                    provider.GetRequiredService<ConnectionFailureLogger>()));
 
         services.AddDbContext<CmsReadDbContext>((provider, options) =>
             options
                 .UseSqlite(provider.GetRequiredService<DatabaseConnections>().Read)
-                .AddInterceptors(provider.GetRequiredService<SecureDeleteInterceptor>())
+                .AddInterceptors(
+                    provider.GetRequiredService<SerialOpenInterceptor>(),
+                    provider.GetRequiredService<SecureDeleteInterceptor>(),
+                    provider.GetRequiredService<ConnectionFailureLogger>())
                 .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
         return services;

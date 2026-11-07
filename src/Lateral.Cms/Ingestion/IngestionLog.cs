@@ -24,8 +24,8 @@ public static partial class IngestionLog
         ILogger logger, Guid batchId, double elapsedMs, int queued, int ignored, int rejected);
 
     [LoggerMessage(EventId = 1007, Level = LogLevel.Warning,
-        Message = "Batch {BatchId} refused: the queue holds {UsedBytes} of {MaxBytes} bytes. Nothing was stored; the sender should retry")]
-    public static partial void QueueFull(ILogger logger, Guid batchId, long usedBytes, long maxBytes);
+        Message = "Batch {BatchId} refused: the queue holds {UsedBytes} of {MaxBytes} bytes, {FailedBytes} of them in set-aside batches. Nothing was stored; the sender should retry")]
+    public static partial void QueueFull(ILogger logger, Guid batchId, long usedBytes, long maxBytes, long failedBytes);
 
     [LoggerMessage(EventId = 1008, Level = LogLevel.Error,
         Message = "Batch {BatchId} could not be stored; nothing was kept and the sender should retry")]
@@ -69,7 +69,7 @@ public static partial class IngestionLog
     public static partial void AdminOverride(ILogger logger, string admin, bool disabled, string entityId, bool changed);
 
     [LoggerMessage(EventId = 1101, Level = LogLevel.Warning,
-        Message = "Admin {Admin} RESET all data: {Entities} entities, {Tombstones} tombstones, {LedgerRows} ledger rows and {Batches} batches erased")]
+        Message = "Admin {Admin} RESET all data: {Entities} entities, {Tombstones} tombstones, {LedgerRows} ledger rows and {Batches} batches erased (the audit log is kept)")]
     public static partial void AdminReset(ILogger logger, string admin, int entities, int tombstones, int ledgerRows, int batches);
 
     [LoggerMessage(EventId = 1102, Level = LogLevel.Warning,

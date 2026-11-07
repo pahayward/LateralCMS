@@ -69,7 +69,8 @@ public sealed class AcceptService(
                     .SumAsync(b => b.PayloadBytes, cancellationToken);
                 if (used + row.PayloadBytes > limit)
                 {
-                    IngestionLog.QueueFull(logger, batchId, used, limit);
+                    var failedBytes = await db.Batches.Where(b => b.Status == BatchState.Failed).SumAsync(b => b.PayloadBytes, cancellationToken);
+                    IngestionLog.QueueFull(logger, batchId, used, limit, failedBytes);
                     throw new InboxFullException(used, limit);
                 }
             }

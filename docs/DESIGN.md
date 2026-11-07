@@ -8,7 +8,7 @@ named), measured (EVIDENCE has the run) or labelled *reasoned* or *assumed*.
 **Contents:** [1 Decisions](#1-decisions-on-ambiguities) · [2 Shape](#2-shape) · [3 Sync or async](#3-why-asynchronous) ·
 [4 The pipeline](#4-the-pipeline) · [5 The rules](#5-the-reconciliation-rules) · [6 The ordering assumption](#6-the-ordering-assumption) ·
 [7 Contract](#7-ingestion-contract) · [8 Storage](#8-storage) · [9 API and access](#9-api-and-access) ·
-[10 Observability](#10-observability-and-alerts) · [Limits](#limits)
+[10 Observability](#10-observability-and-alerts) · [11 Assets and scanning](#11-assets-and-scanning) · [12 Security review](#12-security-review) · [Limits](#limits)
 
 ## 1. Decisions on ambiguities
 
@@ -31,10 +31,13 @@ The brief is open-ended on purpose. Each ambiguity got a written decision (teste
 | S13 | Ids and timestamps | Ids are 1 to 200 characters, trimmed, no control characters, no `/` or `\` (they must fit one URL path segment). Timestamps are ISO-8601 *with* an explicit offset, normalised to UTC, not more than an hour in the future. Versions are 64-bit integers ≥ 1 |
 | S14 | "Sanitised" | Normalise, never alter content: trim ids, UTC timestamps, compact canonical JSON, reject control characters in ids. Payload values are not HTML-escaped or stripped; escaping belongs to whoever renders them |
 | S15 | Checksums (asked for later) | Every payload, computed once at ingestion over the canonical text; `sha256:<hex>` by default, `md5:<hex>` by setting; stored, returned to the publisher, served by the API, recorded with the event and in the logs. Integrity, not authenticity |
-| S16 | Large content ("what if someone uploads a 10 GB video?") | Out of scope for the payload: the webhook refuses bodies over the limit by their *declared* length before reading; media is referenced (address, type, size, checksum), never carried |
+| S16 | Large content ("what if someone uploads a 10 GB video?") | Never in an event: the webhook refuses bodies over the limit by their *declared* length before reading, and a payload may only *name* a file. Files have their own path, the asset store ([section 11](#11-assets-and-scanning)): multipart upload, scanning, ranged download |
 | S17 | Ordering assumption | One CMS. For one id, a higher version never carries an earlier timestamp, and ids are not reused with restarting versions. [Section 6](#6-the-ordering-assumption) says what happens outside it |
 | S18 | Sync or async | Durable asynchronous ([section 3](#3-why-asynchronous)) |
 | S19 | A takedown that keeps failing | A batch holding an `unPublish` or `delete` is never set aside: it keeps retrying at the longest delay, loudly, because a parked takedown would leave a confidential entity visible. Other batches are set aside after the maximum attempts |
+| S20 | Assets and entities | Standalone. An event's payload may name an asset id, but reconciliation and the entity API do not look at assets, so the rules of section 5 are unchanged |
+| S21 | An upload the scanner cannot judge | Fail closed: it stays quarantined and unserved, retries with back-off, and is set aside (still unserved) for an admin. Only a `clean` verdict can end quarantine |
+| S22 | An upload the scanner flags | Rejected: the bytes are overwritten and removed; the verdict, rule, checksum and times stay, never the content |
 
 ## 2. Shape
 
@@ -219,8 +222,8 @@ that passed validation, whatever its outcome (for `ignored_stale` it identifies 
 **A `202` is not "applied"**: that is why the README's try-it follows the batch.
 
 **Payload storage and canonical form.** A payload is stored inline as `TEXT` (at most 256 KiB) in the same transaction as the
-state, so the state, its checksum and its event record cannot disagree; media is carried by reference (address, type, size,
-checksum), never inside the event. The stored text is exactly what `Utf8JsonWriter` writes from the parsed element with
+state, so the state, its checksum and its event record cannot disagree; files never travel inside an event (a payload may name an
+asset, see section 11). The stored text is exactly what `Utf8JsonWriter` writes from the parsed element with
 default options: no whitespace; members in the order sent, duplicate names kept; numbers as sent; `"` `\` and the control
 characters as short escapes (`\n \t \r \b \f`) or `\u00XX`; the HTML-sensitive characters `< > & ' + `` ` `` as `< >
 & ' + ``; every non-ASCII UTF-16 unit as `\uXXXX` with upper-case hex; `/` and other printable ASCII
@@ -262,7 +265,7 @@ that is also why the design is a single instance.
 | `GET /api/admin/ingestion` | 401 | 403 | 403 | 200 |
 | `POST /api/admin/ingestion/{id}/requeue` | 401 | 403 | 403 | 200 / 404 / 409 |
 
-(The reset endpoint exists only with `Admin:AllowReset`.) A test generates the role-by-route matrix from the mapped endpoints and
+The asset routes (section 11) follow the same pattern: `PUT`/`POST`/`DELETE` under `/cms/assets` for the CMS only; `GET /cms/assets/{id}` for the CMS and admins; `GET`/`HEAD /api/assets/{id}` for users and admins (clean assets only); `DELETE /api/assets/{id}` and `/api/admin/assets/*` for admins only; each has a row in the generated matrix. (The reset endpoint exists only in Development, or where an environment is named on purpose.) A test generates the role-by-route matrix from the mapped endpoints and
 fails if a route has no row; another proves no route updates or deletes an entity. Users see published, non-disabled entities;
 admins see everything plus a `status` block; the server decides from the caller's role only, and no query parameter widens it.
 A hidden entity gives the same `404` as a missing one. Listing is keyset-paged (default 50, max 100), projects to a DTO, tracks
@@ -295,6 +298,120 @@ type string cannot create a new series.
 | `429 inbox_full` responses | senders are being pushed back; the queue is at its cap (failed batches count against it) |
 | No batches accepted for longer than the CMS's normal quiet period | **the CMS has gone quiet** (webhook broken, credentials rotated, network): nothing in this service can detect it, so it needs an alert on `cms.events.queued` |
 | Worker Error "hit an unexpected error" | the database is unreachable or full |
+| Error "The database connection failed." | a connection could not be opened (the line carries the exception; EF's own line for this event is switched off because it omits it). A connection open cancelled by the app stopping is not logged: that is a normal stop |
+
+## 11. Assets and scanning
+
+The brief's events carry fields, never files (S16), so a large file needs its own path. The asset store is that path: a local
+approximation of what an object store such as S3 gives you (several object sizes, multipart upload, ranged and parallel
+download, checksums and ETags, hard delete), with one rule above all: **nothing that was uploaded is served until a scanner has
+cleared it.** It is standalone: an event's payload may *name* an asset id, but the reconciliation rules and the entity API do not
+look at assets (S20).
+
+**Model.** `Assets` (id, the client's key, claimed type, detected type, size, SHA-256, state, verdict, signature, scanner name and
+version, attempts, next attempt), `Uploads` and `UploadParts` for multipart uploads in progress, and `AuditLog`. **Bytes live on
+disk, never in a table**, behind one seam, `IAssetStore`: `parts/<upload>/<n>` while an upload is in progress,
+`quarantine/<asset>` until the scan, `blobs/ab/cd/<sha256>` once clean. Content-addressed means identical content is stored once;
+it is removed only when the last asset using it goes. Files are written to a temp name, flushed to disk and renamed into place, so
+a crash never leaves a half-written object under its real name.
+
+| State | Meaning | Served? |
+|---|---|---|
+| `quarantined` | stored, waiting for (or being retried by) the scanner | never |
+| `clean` | cleared by the scanner; bytes are under their content address | yes, to users and admins |
+| `rejected` | flagged; bytes overwritten and removed; only the verdict remains | never |
+| `failed` | scanning kept failing and was set aside; bytes stay in quarantine | never |
+
+**Upload.** `PUT /cms/assets/{key}` takes one object up to `Assets:MaxSimpleBytes` (8 MiB), streamed to disk and never buffered.
+Larger objects use the S3 shape: `POST /cms/assets/uploads` (declared size), `PUT .../parts/{n}` (5 to 64 MiB, any order, any
+number in parallel, each checked against its `X-Content-SHA256`, sending a part again replaces it), `POST .../complete` with the
+part list. Completion verifies the parts, the declared total and the assembled hash, assembles by streaming, and quarantines the
+result. Declared lengths over a limit are refused with `413` before a byte is read; chunked bodies are cut off as they are read.
+A total cap (`Assets:MaxBytes`, counting parts in flight) answers `429` with nothing stored. Unfinished uploads expire; a sweeper
+removes expired uploads and any file no row accounts for, but never a file younger than `Assets:SweepGrace`. File names are only
+ever ids and digests, so a client-supplied key cannot steer a path (tested with traversal and encoded separators).
+
+**Download.** `GET`/`HEAD /api/assets/{id}` streams the file (async, sequential, never loaded whole: a test serves 64 MiB while
+the process allocates a small fraction of that) with `Range` (single, suffix and open-ended), `If-Range`, a strong `ETag` that is
+the SHA-256, and `If-None-Match` for `304`. That is what makes parallel download work: a client opens many range requests at once
+and reassembles them, and can resume after a failure. A per-caller cap on concurrent downloads stops one client holding every
+file handle. Responses are always an attachment, typed by what the scanner **detected** (never what the sender claimed), with
+`nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` and `no-store`. A missing asset and one that is not clean are the
+same `404` (S7).
+
+**Scanning.** `IAssetScanner` is the seam; the built-in `MockAssetScanner` is a deterministic, harmless stand-in (it is **not**
+protection, K19). It reads the bytes in chunks and recognises: its own test signature (and, if switched on, the industry EICAR
+string, which is off by default because antivirus on a developer machine deletes it); executables by magic bytes, flagged when
+bare or when dressed as another type; a declared image or PDF type that the bytes contradict; script, event handlers and
+`foreignObject` in SVG and HTML, and JavaScript, `OpenAction` and `Launch` in PDF; ZIP bombs, judged from the central directory
+alone without decompressing anything; and, only when `Assets:Mock:EnableFailureMarkers` is on, content that simulates a scanner
+that errors or hangs, so the failure paths run for real.
+
+A worker takes the oldest due quarantined asset, scans it **outside the write gate** (a slow scan never holds up ingestion), then
+applies the verdict in one transaction under the gate:
+
+- **Clean:** the file moves to its content address and the asset becomes servable.
+- **Infected or suspicious:** the verdict is recorded first (nothing is marked servable while its bytes go), then the quarantined
+  bytes and the blob are overwritten with zeros and removed. Other assets with the same content are rejected with it. The row keeps
+  the verdict, rule name, checksum and times: no content.
+- **Anything else fails closed (S21).** A scanner error, a timeout (`Assets:ScanTimeout`), a missing file or an exception leaves the
+  asset quarantined and unserved, counts as a failed attempt, and retries with doubling back-off; after `Assets:ScanMaxAttempts` it
+  is set aside as `failed` (still unserved, bytes kept for inspection) until an admin requeues it, and a requeue goes through the
+  scan again. Nothing in these paths can produce `clean`.
+
+The scanner stamps its version on every verdict, so when its rules change `POST /api/admin/assets/rescan-outdated` puts every
+asset cleared by an older version back in quarantine (and out of service) until it is cleared again; an admin can also re-scan one
+asset. To use a real engine, implement `IAssetScanner` (for example ClamAV over `clamd` INSTREAM) and register it; upload,
+quarantine, wipe, retry and download do not change.
+
+**Hard delete.** `DELETE /api/assets/{id}` removes the row and overwrites the bytes with zeros before removing them, **even if a
+reader has the file open** (some platforms refuse to delete an open file; the zeros are already written and the sweeper removes
+the file). Limits: overwriting a file is best effort on SSDs and copy-on-write file systems, and says nothing of backups or
+snapshots (K6). Unlike the SQLite file, asset bytes are not covered by `secure_delete`; the explicit overwrite is the mechanism.
+
+**Audit.** Uploads, verdicts, deletes, re-scans and the admin actions on entities and the queue write an `AuditLog` row in the
+same transaction as the change: who, what, which target, never content. The schema refuses `UPDATE` and `DELETE` on the table
+(triggers), and the test-only reset keeps it (SH-05).
+
+## 12. Security review
+
+What a reviewer would conclude about the design as built, from a deliberate attempt to break it.
+
+**Secure by design (and tested):** deny by default (a fallback policy; a role-by-route matrix generated from the mapped endpoints,
+so an unprotected route fails a test); least privilege and separate accounts (the CMS cannot read, users cannot write, only
+admins administer); constant-time credential comparison with every account evaluated; a failed-sign-in throttle; fail-closed
+`404`s for anything hidden; no payload, password or `Authorization` header in any log; strict input bounds everywhere (declared
+length before reading, depth, batch, payload, ids, timestamps, parts, objects, concurrent accepts and downloads); only
+parameterised EF queries; a read-only read context; physical delete in the database (`secure_delete`) and for asset bytes; startup
+refusing missing or malformed credentials, proxy settings and asset limits; HSTS and HTTPS redirection in Production;
+`no-store`, `nosniff` and a CSP everywhere, and a sandbox CSP and attachment disposition on every download; payload canonical form
+that escapes HTML-sensitive characters; uploaded content never served until scanned, and every failure of the scan leaves it
+unserved.
+
+**Weaknesses the review found and this build closed** (each has a requirement and a test that fails if it is undone):
+
+| Finding | Closed by |
+|---|---|
+| Development passwords were committed to the repository (SH-01) | Settings files hold none; Development generates random ones into a git-ignored file on first run, only when none were supplied. *The earlier commit's history still contains the old development passwords; they no longer work.* |
+| An authenticated sender could make the service buffer many 5 MiB bodies at once (SH-02) | Only `Ingestion:MaxConcurrentAccepts` batches are read at once; a bounded queue absorbs bursts; overflow gets `429` |
+| Behind a proxy every client shared one address, so the throttle either locked everyone out or could be dodged with a forged header (SH-03) | `X-Forwarded-For` is believed only from configured proxies and ignored otherwise |
+| The reset endpoint was refused only in `Production`, so any other environment name could enable it (SH-04) | An allow-list: Development, or an environment named on purpose |
+| Admin actions were only log lines (SH-05) | An append-only, same-transaction audit log |
+| Set-aside batches could quietly fill the queue (SH-06) | Their bytes are in the report, a gauge and the refusal log |
+| The test console holds live credentials and could run anywhere (SH-07) | It refuses to start outside Development unless told to |
+
+**Still open, in order of importance** (needs decisions or infrastructure beyond a local build; the next steps are in the limits
+table): (1) **Basic authentication with secrets in configuration** over whatever transport the deployment provides (K4, K5): move to
+a secret store, hashed credentials, TLS at the edge and signed requests for the CMS, which would also give replay protection;
+(2) **a stolen CMS credential can do real damage**: a delete timestamped up to an hour ahead blocks that id until then, and
+checksums are integrity, not authenticity (K10); (3) **no encryption at rest** for the database or asset files, and the SQLite
+file and asset folder rely on the operating system's permissions (K6); (4) **a mock scanner is not malware protection** (K19):
+real protection needs a real engine, and defence in depth for whoever consumes the files; (5) dependency checking is only a vulnerable-package check in CI, with
+no SAST, SBOM or signed builds (K16); (6) payload content is served as JSON for consumers that must escape it before rendering (S14).
+
+**Verdict.** Secure by design in its principles (deny by default, fail closed, least privilege, keep and serve as little as
+possible), and the review's concrete weaknesses are closed. **Not production-ready as shipped:** the authentication, secret
+handling and scanner are demo-grade, which is stated rather than hidden.
 
 ## Limits
 
@@ -312,14 +429,17 @@ What this build knowingly leaves at demo quality, in order of importance, with w
 | K5 | Transport | TLS assumed at the edge; redirect and HSTS only in Production | Enforced TLS, forwarded-header handling, certificate management |
 | K9 | Idempotency | A retried batch is stored and processed again (each event reports `ignored_duplicate`); no completion callback | An idempotency key per batch; a callback or event |
 | K10 | Integrity | Checksums detect corruption, not tampering; the form follows the .NET encoder | An HMAC or signatures; RFC 8785 canonical JSON |
-| K11 | Payload storage | Inline `TEXT` up to 256 KiB; media by reference | A content-addressed object store above about 1 MB, written before the row commits |
+| K11 | Payload storage | Inline `TEXT` up to 256 KiB; larger content goes to the asset store, which is a folder on local disk behind `IAssetStore` | An object store behind the same interface, with the durability and lifecycle features a folder does not have |
 | K12 | Operations | A meter and structured logs; alerts only listed here | OpenTelemetry export, dashboards, alert rules as code, runbooks |
 | K13 | API surface | Keyset paging by id only; no filtering, sorting, search, ETags or versioning | Those, and an API version policy |
-| K14 | Admin audit | Columns on the row and log lines | An append-only audit table written in the same save |
+| K14 | Admin audit | An append-only `AuditLog` written in the same transaction as each admin, asset and verdict change; the schema refuses updates and deletes. No retention policy, no tamper evidence beyond the schema, sign-ins not recorded | A hash-chained or externally shipped audit trail, sign-in and failure events, retention and access rules |
 | K15 | Portability | Only SQLite exercised; the read-only mode and partial index are SQLite specifics | A second provider in CI and a migration strategy |
-| K16 | Verification | The deliberate-defect log is manual; no soak, chaos, SAST or DAST | Automated mutation testing scoped to `Domain` and the parser, dependency scanning, a threat model |
+| K16 | Verification | The deliberate-defect log is manual; a CI job fails on known-vulnerable packages (run once locally: none); no soak, chaos, SAST or DAST | Automated mutation testing scoped to `Domain` and the parser, dependency scanning, a threat model |
 | K17 | Developer tooling | The console and reset endpoint exist for hand-testing and are fenced | Not shipped to production |
 | K18 | Tenancy | One CMS, one tenant | Isolation, per-tenant keys and quotas |
+| K19 | Content scanning | A mock scanner that recognises obvious test patterns, to prove the pipeline (quarantine, verdict, wipe, retry, fail closed). It is **not** malware protection | A real engine behind `IAssetScanner` (ClamAV or a vendor service), signature updates with re-scan of old assets (supported), sandboxed rendering and a policy on which types are accepted at all |
+| K20 | Asset store | One folder on one disk: no replication, erasure coding, versioning, lifecycle rules, pre-signed URLs or server-side encryption; overwrite-before-delete is best effort on SSDs and copy-on-write systems; assets are not covered by `secure_delete` | An object store (S3 or similar) with encryption and per-object keys; crypto-shredding for erasure |
+| K21 | SQLite connection pool | Microsoft.Data.Sqlite 9 has a race in its pool: a connection is marked active before its owner is recorded, so a second thread that finds the pool empty can take it as "leaked" and fail the first with `database is locked` (seen as a rare HTTP 500 under many parallel requests). Worked around by opening every connection under one lock (`SerialOpenInterceptor`, tests `ConnectionPoolTests`) | Remove the workaround once the library fixes it (re-check on each upgrade of the SQLite package), or move to a server database where the pool is not the library's |
 
 **.NET 9** leaves support on 10 November 2026. The projects target `net9.0` with `RollForward=Major`, so they build with a 9 SDK
 and run on a 9 or newer runtime; `net10.0` is a one-line change in `Directory.Build.props` once the 9 SDK need goes away.
@@ -328,5 +448,5 @@ and run on a 9 or newer runtime; `net10.0` is a one-line change in `Directory.Bu
 K5); an erasure and retention policy including backups (K6); sequence numbers and resync from the CMS (K7, K8); the observability
 stack and alerts (K12); load, soak and chaos tests, then a security review (K2, K16); idempotency keys and callbacks (K9).
 
-**Explicit non-goals:** search, filtering and sorting; outbound webhooks; a blob or media store; SSO and user management;
-multi-tenancy; an event replay API; a user interface beyond the developer console.
+**Explicit non-goals:** search, filtering and sorting; outbound webhooks; pre-signed URLs and the rest of S3's feature set beyond what
+section 11 lists; SSO and user management; multi-tenancy; an event replay API; a user interface beyond the developer console.

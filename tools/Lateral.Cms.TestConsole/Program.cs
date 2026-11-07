@@ -23,11 +23,27 @@ builder.Services.AddHttpClient("cms")
 
 var app = builder.Build();
 
+// A tool that holds credentials and can erase data does not run in a deployed environment by accident.
+if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>($"{ConsoleOptions.SectionName}:AllowNonDevelopment"))
+{
+    throw new InvalidOperationException(
+        $"The test console only runs in the Development environment (this is '{app.Environment.EnvironmentName}'). " +
+        $"Set {ConsoleOptions.SectionName}:AllowNonDevelopment=true to run it anyway.");
+}
+
 app.UseSecurityHeaders();
 app.UseLocalRequestGuard();
 app.UseDefaultFiles();
-app.UseStaticFiles();
+// A development tool: always ask whether a script or style has changed rather than trusting a cached copy.
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache" });
+
+// "/" is the photo library (the sample application); the engineering console that came first lives at /engineering.
+app.MapGet("/engineering", (IWebHostEnvironment environment) =>
+    environment.WebRootFileProvider.GetFileInfo("engineering.html") is { Exists: true } page
+        ? Results.Stream(page.CreateReadStream(), "text/html; charset=utf-8")
+        : Results.NotFound());
 app.MapConsoleEndpoints();
+app.MapMediaEndpoints();
 
 app.Lifetime.ApplicationStarted.Register(() =>
 {

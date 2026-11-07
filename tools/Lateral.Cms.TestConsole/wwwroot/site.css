@@ -1,0 +1,66 @@
+/* The slim bar across the top of every page of the site: which part of it you are in. Its colours are its own, so it looks
+   the same above the photo library and above the engineering console. */
+.site-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  height: 38px;
+  padding: 0 16px;
+  background: #11141b;
+  color: #c9d0e0;
+  font: 13px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  position: relative;
+  z-index: 50;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .site-bar .note { display: none; }
+}
+
+.site-bar .brand {
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-bar .brand::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #7fa3ff, #9b7bff);
+}
+
+.site-bar nav {
+  display: flex;
+  gap: 4px;
+  height: 100%;
+}
+
+.site-bar a {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  color: #aab3c8;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.site-bar a:hover {
+  color: #fff;
+}
+
+.site-bar a[aria-current="page"] {
+  color: #fff;
+  border-bottom-color: #8aa6ff;
+}
+
+.site-bar .note {
+  margin-left: auto;
+  color: #7f89a1;
+}

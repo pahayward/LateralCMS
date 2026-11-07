@@ -19,21 +19,32 @@ public class RouteAndTransportTests(CmsFactory factory) : IClassFixture<CmsFacto
             .SelectMany(e => (e.Metadata.GetMetadata<IHttpMethodMetadata>()?.HttpMethods ?? []).Select(m => $"{m} /{e.RoutePattern.RawText!.Trim('/')}"))
             .ToHashSet();
 
-        var writes = routes.Where(r => !r.StartsWith("GET ", StringComparison.Ordinal)).Order().ToList();
+        var writes = routes.Where(r => !r.StartsWith("GET ", StringComparison.Ordinal) && !r.StartsWith("HEAD ", StringComparison.Ordinal)).Order().ToList();
 
         // Anything added later that can write must be named here, on purpose, and justified in the design.
         Assert.Equal(
             [
+                "DELETE /api/assets/{id:guid}",
+                "DELETE /cms/assets/uploads/{uploadId:guid}",
+                "POST /api/admin/assets/rescan-outdated",
+                "POST /api/admin/assets/{id:guid}/requeue",
+                "POST /api/admin/assets/{id:guid}/rescan",
                 "POST /api/admin/ingestion/{batchId:guid}/requeue",
                 "POST /api/entities/{id}/disable",
                 "POST /api/entities/{id}/enable",
+                "POST /cms/assets/uploads",
+                "POST /cms/assets/uploads/{uploadId:guid}/complete",
                 "POST /cms/events",
+                "PUT /cms/assets/uploads/{uploadId:guid}/parts/{partNumber:int}",
+                "PUT /cms/assets/{key}",
             ],
             writes);
 
         // None of the reads or writes on entities takes a body that could carry new content.
-        Assert.DoesNotContain(routes, r => r.StartsWith("PUT ", StringComparison.Ordinal) || r.StartsWith("PATCH ", StringComparison.Ordinal)
-                                           || r.StartsWith("DELETE ", StringComparison.Ordinal));
+        // Nothing can change an entity: the only PUT and DELETE routes are for assets.
+        Assert.DoesNotContain(routes, r => r.Contains("/entities", StringComparison.Ordinal)
+                                           && (r.StartsWith("PUT ", StringComparison.Ordinal) || r.StartsWith("PATCH ", StringComparison.Ordinal)
+                                               || r.StartsWith("DELETE ", StringComparison.Ordinal)));
     }
 
     [Theory]

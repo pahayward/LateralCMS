@@ -201,3 +201,8 @@ details[open] > summary { margin-bottom: 8px; }
 .endpoints td { vertical-align: top; }
 .endpoints td.ep-path { white-space: nowrap; }
 .endpoints tr.focus { background: var(--accent-soft); }
+
+/* Assets tab log */
+.ok-text { color: var(--ok, #1a7f37); }
+.bad-text { color: var(--bad, #cf222e); }
+#as-log { max-height: 16rem; overflow: auto; white-space: pre-wrap; }

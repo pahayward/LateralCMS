@@ -20,7 +20,7 @@ public class StorageGuaranteeTests(CmsFactory factory) : IClassFixture<CmsFactor
 
     [Fact]
     [Trait("req", "ST-01")]
-    public void One_migration_builds_the_final_schema_from_nothing()
+    public void The_migrations_build_the_final_schema_from_nothing()
     {
         _ = factory.Services;
 
@@ -30,9 +30,11 @@ public class StorageGuaranteeTests(CmsFactory factory) : IClassFixture<CmsFactor
         var indexes = factory.Sql("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'IX\\_%' ESCAPE '\\' ORDER BY name")
             .Select(r => (string)r[0]!);
 
-        Assert.Single(migrations);
+        // Two migrations: the core schema, then assets and the audit log. Each is applied from nothing, in order.
+        Assert.Equal(2, migrations.Count);
         Assert.EndsWith("_Initial", migrations[0]);
-        Assert.Equal(["Batches", "Entities", "Events", "Tombstones"], tables);
+        Assert.EndsWith("_Assets", migrations[1]);
+        Assert.Equal(["Assets", "AuditLog", "Batches", "Entities", "Events", "Tombstones", "UploadParts", "Uploads"], tables);
         Assert.Contains("IX_Batches_Pick", indexes);
         Assert.Contains("IX_Entities_Visible", indexes);
         Assert.Contains("IX_Events_BatchId_Sequence", indexes);

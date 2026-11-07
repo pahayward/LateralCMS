@@ -14,7 +14,7 @@ public class ResetEndpointTests : IClassFixture<ResetEndpointTests.ResetEnabledF
 {
     public sealed class ResetEnabledFactory : CmsFactory
     {
-        protected override IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [new("Admin:AllowReset", "true")];
+        protected override IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [new("Admin:AllowReset", "true"), new("Admin:ResetAllowedEnvironment", "Testing")];
     }
 
     private const string Url = "/api/admin/reset";

@@ -15,7 +15,7 @@ public sealed class InboxFullException(long usedBytes, long maxBytes)
 }
 
 /// <summary>Wakes the worker the moment a batch is accepted, so the queue adds no delay when it is empty.</summary>
-public sealed class WakeSignal
+public class WakeSignal
 {
     private readonly SemaphoreSlim _wake = new(0, 1);
 
@@ -44,11 +44,15 @@ public sealed class QueueBacklog
 {
     private long _pending;
     private long _failed;
+    private long _failedBytes;
     private double _oldestAgeSeconds;
 
     public long PendingBatches => Interlocked.Read(ref _pending);
 
     public long FailedBatches => Interlocked.Read(ref _failed);
+
+    /// <summary>Bytes held by batches that were set aside. They count against the queue cap until an admin requeues or removes them.</summary>
+    public long FailedBytes => Interlocked.Read(ref _failedBytes);
 
     public double OldestPendingAgeSeconds => Volatile.Read(ref _oldestAgeSeconds);
 
@@ -56,13 +60,14 @@ public sealed class QueueBacklog
     {
         Interlocked.Exchange(ref _pending, stats.PendingBatches);
         Interlocked.Exchange(ref _failed, stats.FailedBatches);
+        Interlocked.Exchange(ref _failedBytes, stats.FailedBytes);
         Volatile.Write(ref _oldestAgeSeconds, stats.OldestPending is { } oldest ? Math.Max(0, (now - oldest).TotalSeconds) : 0);
     }
 }
 
 /// <summary>A snapshot of what the queue holds.</summary>
 public sealed record QueueStats(
-    int PendingBatches, int PendingEvents, DateTime? OldestPending, int FailedBatches, long UsedBytes)
+    int PendingBatches, int PendingEvents, DateTime? OldestPending, int FailedBatches, long UsedBytes, long FailedBytes = 0)
 {
     /// <summary>
     /// Reads the figures with one grouped query that only touches batches still queued or failed (an index range
@@ -87,7 +92,7 @@ public sealed record QueueStats(
         var failed = rows.FirstOrDefault(r => r.Status == BatchState.Failed);
         return new QueueStats(
             pending?.Batches ?? 0, pending?.Events ?? 0, pending?.Oldest, failed?.Batches ?? 0,
-            (pending?.Bytes ?? 0) + (failed?.Bytes ?? 0));
+            (pending?.Bytes ?? 0) + (failed?.Bytes ?? 0), failed?.Bytes ?? 0);
     }
 }
 

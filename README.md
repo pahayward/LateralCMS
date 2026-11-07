@@ -9,7 +9,7 @@ answers `202` with a link to follow it. A background worker then applies each ba
 changes state if it sorts after what is stored, so replays do nothing and late or duplicated events cannot undo newer
 ones. Users read published entities; admins read everything and can disable an entity locally without touching the CMS.
 
-**Contents:** [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Test console](#test-console) ·
+**Contents:** [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Photo library](#photo-library-a-sample-application) · [Test console](#test-console) ·
 [Tests](#tests) · [Configuration](#configuration) · [Outside Development](#running-outside-development) ·
 [Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Docs](#docs)
 
@@ -26,8 +26,9 @@ dotnet run --project src/Lateral.Cms
 ```
 
 In the `Development` environment (the default for `dotnet run`) the service listens on <http://localhost:5080>, creates
-`src/Lateral.Cms/App_Data/cms.db` and applies the migration. The accounts below come from
-[appsettings.Development.json](src/Lateral.Cms/appsettings.Development.json), which holds random development-only passwords:
+`src/Lateral.Cms/App_Data/cms.db` and applies the migrations. **No password is committed to the repository.** The first time it
+runs in Development it generates random ones into `src/Lateral.Cms/App_Data/dev-credentials.json` (git-ignored; delete the file to
+rotate them), unless you supply credentials yourself. The accounts:
 
 | Account | Username | Role | May |
 |---|---|---|---|
@@ -43,12 +44,12 @@ These commands are run by CI against the built service (the `README try-it` job)
 and a POSIX shell (bash, zsh, Git Bash); on Windows without one, use the [test console](#test-console) or
 [requests.http](requests.http) instead. Pipe any response through `jq .` if you have it.
 
-Set up the accounts. The development settings file lists three passwords in order (CMS, user, admin) and the usernames are in
-the table above, so nothing is typed here:
+Set up the accounts. The generated credentials file lists three passwords in order (CMS, user, admin) and the usernames are in
+the table above, so nothing is typed here (start the service first, so the file exists):
 
 ```bash try-it
 BASE=http://localhost:5080
-PASSWORDS=($(grep -oE "[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}" src/Lateral.Cms/appsettings.Development.json))
+PASSWORDS=($(grep -oE "[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}" src/Lateral.Cms/App_Data/dev-credentials.json))
 CMS="cms-ingest-svc:${PASSWORDS[0]}"
 READER="user@lateral.example:${PASSWORDS[1]}"
 ADMIN="admin@lateral.example:${PASSWORDS[2]}"
@@ -116,20 +117,120 @@ until [ "$(curl -s -o /dev/null -w '%{http_code}' -u "$ADMIN" "$BASE/api/entitie
 curl -sf -u "$ADMIN" "$BASE/api/admin/ingestion"; echo
 ```
 
+## Assets: upload, scan, download
+
+Files do not travel in events. They go to the asset store, a local approximation of an object store: one `PUT` for small files,
+**multipart upload** (parts in parallel, each checksummed) for large ones, and **ranged, resumable, parallel downloads**. Every
+upload lands in **quarantine**; a background scanner decides; only a **clean** asset can be downloaded, and a flagged one is
+overwritten and removed (only its verdict stays). The scanner here is a mock that recognises obvious test patterns: it proves the
+pipeline, it is not malware protection. See [DESIGN section 11](docs/DESIGN.md#11-assets-and-scanning).
+
+A small file, then the same thing for a file the mock scanner flags:
+
+```bash try-it
+FILE="$(mktemp)"
+printf 'An ordinary text file.\n' > "$FILE"
+ASSET="$(curl -sf -u "$CMS" -X PUT -H "Content-Type: text/plain" --data-binary @"$FILE" "$BASE/cms/assets/hello.txt")"
+echo "$ASSET"
+ASSET_ID="$(echo "$ASSET" | sed -E 's/.*"id":"([^"]+)".*/\1/')"
+while curl -sf -u "$CMS" "$BASE/cms/assets/$ASSET_ID" | grep -q '"state":"quarantined"'; do sleep 0.2; done
+curl -sf -u "$CMS" "$BASE/cms/assets/$ASSET_ID"; echo
+curl -sf -u "$READER" "$BASE/api/assets/$ASSET_ID"
+curl -sf -u "$READER" -H "Range: bytes=3-9" "$BASE/api/assets/$ASSET_ID"; echo
+test "$(curl -s -o /dev/null -w '%{http_code}' -u "$CMS" "$BASE/api/assets/$ASSET_ID")" = 403
+
+printf 'harmless words LATERAL-MOCK-VIRUS-TEST-FILE more words\n' > "$FILE"
+BAD="$(curl -sf -u "$CMS" -X PUT -H "Content-Type: text/plain" --data-binary @"$FILE" "$BASE/cms/assets/bad.txt")"
+BAD_ID="$(echo "$BAD" | sed -E 's/.*"id":"([^"]+)".*/\1/')"
+while curl -sf -u "$CMS" "$BASE/cms/assets/$BAD_ID" | grep -q '"state":"quarantined"'; do sleep 0.2; done
+curl -sf -u "$CMS" "$BASE/cms/assets/$BAD_ID"; echo
+test "$(curl -s -o /dev/null -w '%{http_code}' -u "$READER" "$BASE/api/assets/$BAD_ID")" = 404
+test "$(curl -s -o /dev/null -w '%{http_code}' -u "$ADMIN" "$BASE/api/assets/$BAD_ID")" = 404
+```
+
+A large file, the S3 way: start an upload, send the parts (they may be sent in parallel; the [test console](#test-console) does), and
+complete it. Then fetch it back as three parallel byte ranges and check the pieces reassemble to the original:
+
+```bash try-it
+BIG="$(mktemp)"
+{ printf '\211PNG\r\n\032\n'; head -c 11000000 /dev/urandom; } > "$BIG"
+SIZE="$(wc -c < "$BIG" | tr -d ' ')"
+UPLOAD="$(curl -sf -u "$CMS" -H "Content-Type: application/json" "$BASE/cms/assets/uploads" -d "{\"key\":\"big.png\",\"contentType\":\"image/png\",\"size\":$SIZE}")"
+UPLOAD_ID="$(echo "$UPLOAD" | sed -E 's/.*"uploadId":"([^"]+)".*/\1/')"
+split -b 5242880 "$BIG" "$BIG.part."
+N=0
+for PART in "$BIG".part.*; do
+  N=$((N + 1))
+  curl -sf -u "$CMS" -X PUT --data-binary @"$PART" "$BASE/cms/assets/uploads/$UPLOAD_ID/parts/$N" > /dev/null
+done
+PARTS="$(seq -s, 1 "$N" | sed -E 's/([0-9]+)/{"partNumber":\1}/g')"
+BIG_ASSET="$(curl -sf -u "$CMS" -H "Content-Type: application/json" "$BASE/cms/assets/uploads/$UPLOAD_ID/complete" -d "{\"parts\":[$PARTS]}")"
+BIG_ID="$(echo "$BIG_ASSET" | sed -E 's/.*"id":"([^"]+)".*/\1/')"
+while curl -sf -u "$CMS" "$BASE/cms/assets/$BIG_ID" | grep -q '"state":"quarantined"'; do sleep 0.2; done
+curl -sf -u "$CMS" "$BASE/cms/assets/$BIG_ID"; echo
+
+curl -sf -u "$READER" -r 0-4999999 -o "$BIG.r1" "$BASE/api/assets/$BIG_ID" &
+curl -sf -u "$READER" -r 5000000-9999999 -o "$BIG.r2" "$BASE/api/assets/$BIG_ID" &
+curl -sf -u "$READER" -r "10000000-$((SIZE - 1))" -o "$BIG.r3" "$BASE/api/assets/$BIG_ID" &
+wait
+cat "$BIG.r1" "$BIG.r2" "$BIG.r3" | cmp - "$BIG" && echo "the three parallel ranges reassemble to the original file"
+rm -f "$FILE" "$BIG" "$BIG".part.* "$BIG".r1 "$BIG".r2 "$BIG".r3
+```
+
+Admins can list assets with their verdicts (`GET /api/admin/assets`), delete one (the bytes are overwritten, then removed), re-scan
+one, or re-queue every asset cleared by an older scanner version (`POST /api/admin/assets/rescan-outdated`). If the scanner fails
+or hangs, the asset stays quarantined and unserved, retries with back-off, and is finally set aside for an admin: it is never
+treated as clean.
+
+## Photo library (a sample application)
+
+A consumer-style photo library, in the spirit of Google Photos without the AI, that keeps **everything in the CMS**. It is the
+front page of the console site (`http://localhost:5100`; the engineering console is its second tab):
+
+```bash
+dotnet run --project src/Lateral.Cms                 # terminal 1: the service on :5080
+dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: open http://localhost:5100
+```
+
+Upload by button or by dropping files anywhere on the page (JPEG, PNG, GIF, WebP), or choose *Add sample photos*, which draws 36
+pictures in your browser and runs them through the same pipeline. Browse a timeline grouped by day with a date rail, select
+with a click (shift for a range), open the viewer (arrow keys, **i** for details), star favourites, make albums, search by
+month, year, file name, camera or album, move to trash and restore, delete forever, and download originals. *Behind the
+scenes* (the `<>` button) shows what the CMS holds and every call the page made.
+
+How it uses the CMS:
+
+| In the app | In the CMS |
+|---|---|
+| A photo | An entity `photo-<reversed time taken>-<random>`. The CMS lists entities in id order, so with the time reversed in the id its own paging returns the library newest first, with no sorting in the page. The payload holds the name, date, size, camera and the ids of the files |
+| Its pictures | Three assets: a thumbnail and a preview made in the browser, and the untouched original. Small ones go up in one PUT, large ones as parallel multipart parts; originals over 4 MB come down as four parallel ranges and are checked against the recorded SHA-256 |
+| Safety | A photo is added only when all three files have been scanned clean. A file the scanner blocks is wiped and nothing is added; *Test the scanner* in the drawer shows it |
+| Favourite, description, album, trash | A new version of the photo's entity (the page shows the change at once and takes it back if the CMS refuses it) |
+| An album | An entity `album-<random>`; membership is a list on each photo |
+| Delete forever | A CMS `delete` event (the id cannot be resurrected by an older version) and the removal of the three files |
+| The same picture twice | Recognised by SHA-256 before anything is uploaded |
+
+The page holds no credentials. It names an account for each call: `cms` to write, `user` to read, `admin` only to remove files for
+good. Pictures reach `<img>` tags through `/media/{id}`, a read-only route of the console that fetches the asset as the reader.
+Listing is by id, so the page reads the whole library a page at a time; a CMS shared with other content would want a prefix
+filter on the listing (not built).
+
 ## Test console
 
-A browser page for driving all of this by hand: send batches from ready-made scenarios (update and replay, out of order,
+The engineering console, at `/engineering` (the second tab of the site), is a browser page for driving all of this by hand: send batches from ready-made scenarios (update and replay, out of order,
 same version with different content, bad events, an oversized payload, a video by reference), act as the CMS, a user, an
 admin, or with wrong credentials, browse entities, and watch the queue. Credentials stay on the console's server; the
 browser only ever names an account.
 
 ```bash
 dotnet run --project src/Lateral.Cms            # terminal 1: the service on :5080
-dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console on http://localhost:5100
+dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console on http://localhost:5100/engineering
 ```
 
 It listens on loopback only and reaches only an allow-list of the service's routes. In Development it reads the accounts
-from the service's development settings. Tabs: **Send events**, **Browse and admin**, **Auth matrix**, **Large files**,
+from the service's generated development credentials, and it refuses to start outside the Development environment unless
+`Console:AllowNonDevelopment` is set. Tabs: **Send events**, **Browse and admin**, **Auth matrix**, **Large files**, **Assets** (upload
+in parallel parts, watch the scanner, download in parallel ranges and verify the hash),
 **Queue**, **Endpoints**. The **Browse and admin** tab has a *Reset* button that erases all data; it only exists while
 `Admin:AllowReset` is on, which is refused in Production.
 
@@ -175,7 +276,17 @@ name the setting.
 | `Inbox:RetryBaseDelay` / `RetryMaxDelay` / `FaultDelay` | 2 s / 60 s / 5 s | back-off doubles up to the maximum |
 | `Inbox:MaxBytes` | 256 MiB | queue size cap; beyond it `429` and nothing is stored |
 | `Api:DefaultPageSize` / `MaxPageSize` | 50 / 100 | |
-| `Admin:AllowReset` | `false` | test-only erase endpoint; refused at startup in Production |
+| `Ingestion:MaxConcurrentAccepts` / `AcceptQueueLimit` | 16 / 256 | batches read into memory at once, and how many may wait; overflow gets `429` |
+| `Proxy:KnownProxies` / `KnownNetworks` | none | trusted reverse proxies; their `X-Forwarded-For` sets the client address for the throttle (ignored if none) |
+| `Admin:AllowReset` | `false` | test-only erase endpoint: allowed in Development, in another environment only if `Admin:ResetAllowedEnvironment` names it, never in Production |
+| `Assets:Root` | `App_Data/assets` | folder for asset bytes (quarantine, parts, content-addressed blobs) |
+| `Assets:MaxSimpleBytes` / `MaxObjectBytes` | 8 MiB / 5 GiB | one `PUT` up to the first; multipart up to the second |
+| `Assets:MinPartBytes` / `MaxPartBytes` / `MaxParts` | 5 MiB / 64 MiB / 10,000 | multipart part limits (the last part may be smaller) |
+| `Assets:MaxBytes` | 20 GiB | store cap (parts in flight count); beyond it `429` |
+| `Assets:UploadTtl` / `SweepInterval` / `SweepGrace` | 24 h / 5 min / 10 min | unfinished uploads expire; the sweeper removes orphans older than the grace |
+| `Assets:MaxConcurrentDownloadsPerCaller` | 8 | more open downloads from one caller get `429` |
+| `Assets:ScanTimeout` / `ScanMaxAttempts` | 2 min / 5 | a scan that fails or hangs is retried (doubling delay from `ScanRetryBaseDelay` to `ScanRetryMaxDelay`), then set aside |
+| `Assets:Scanner` | `Mock` | the only built-in scanner; `Assets:Mock:*` tunes it (`EnableFailureMarkers`, `DetectEicar`, `AllowExecutables`, archive limits) |
 
 ## Running outside Development
 
@@ -203,7 +314,7 @@ behind TLS only.** The service is a single instance with a single writer; see [K
 
 SQLite in WAL mode, accessed through EF Core with two contexts: a write context (tracking, the only one that saves) and a
 read context (no tracking, opened `Mode=ReadOnly`, throws on save). `secure_delete` is on for every connection, so a hard
-delete wipes the bytes from the file rather than only unlinking them. There is one migration, applied at startup. To
+delete wipes the bytes from the file rather than only unlinking them. There are two migrations (the core schema, then assets and the audit log), applied at startup. To
 change the model:
 
 ```bash
@@ -223,6 +334,10 @@ DOTNET_ROLL_FORWARD=Major dotnet ef migrations add <Name> --project src/Lateral.
 | `GET /api/entities?limit=&cursor=` and `GET /api/entities/{id}` | user, admin | keyset paging; admins also get a `status` block |
 | `POST /api/entities/{id}/disable` and `/enable` | admin | local override, idempotent |
 | `GET /api/admin/ingestion`, `POST /api/admin/ingestion/{batchId}/requeue` | admin | queue depth and age; put a failed batch back |
+| `PUT /cms/assets/{key}`, `POST /cms/assets/uploads`, `PUT .../parts/{n}`, `POST .../complete`, `DELETE .../uploads/{id}` | CMS | upload: one `PUT`, or multipart with parts in parallel |
+| `GET /cms/assets/{id}` | CMS, admin | state, checksum and scan verdict; never the bytes |
+| `GET`/`HEAD /api/assets/{id}` | user, admin | download a **clean** asset: `Range`, `ETag`, `If-None-Match`, parallel ranges |
+| `DELETE /api/assets/{id}`, `GET /api/admin/assets`, `POST /api/admin/assets/{id}/rescan` `/requeue`, `POST /api/admin/assets/rescan-outdated` | admin | administer assets |
 
 Whole-request errors are problem+json with a stable `code` (`invalid_json`, `invalid_batch`, `payload_too_large`,
 `batch_too_large`, `inbox_full`, `storage_unavailable`, ...); per-event outcomes are `applied`, `ignored_stale`,
@@ -241,8 +356,11 @@ In order of importance (the reasoning and the next step for each is in [DESIGN](
    requests for the CMS, and TLS at the edge.
 4. **"Hard delete" covers the live database file only.** Backups, replicas and WAL archives need their own erasure policy;
    there is no encryption at rest and no retention job for the event history.
-5. **No resync or replay.** A batch that never arrives is visible only as a gap; the CMS would need to send sequence numbers.
-6. **.NET 9 leaves support on 10 November 2026.** The projects target `net9.0` and roll forward, so moving to `net10.0` is a
+5. **The scanner is a mock.** It proves quarantine, verdicts, wiping and fail-closed retry, but recognises only obvious test
+   patterns: it is not malware protection. A real engine goes behind the `IAssetScanner` seam. The asset store is one folder on one
+   disk, not an object store (no replication, versioning or encryption).
+6. **No resync or replay.** A batch that never arrives is visible only as a gap; the CMS would need to send sequence numbers.
+7. **.NET 9 leaves support on 10 November 2026.** The projects target `net9.0` and roll forward, so moving to `net10.0` is a
    one-line change in `Directory.Build.props`.
 
 ## Docs

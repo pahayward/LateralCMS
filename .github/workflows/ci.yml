@@ -65,3 +65,20 @@ jobs:
           awk '/^```bash try-it$/{on=1; next} /^```$/{on=0} on' README.md > "$RUNNER_TEMP/try-it.sh"
           test -s "$RUNNER_TEMP/try-it.sh"
           bash -eo pipefail "$RUNNER_TEMP/try-it.sh"
+
+  # Known-vulnerable dependencies (direct and transitive) fail the build. Needs the network, so it is its own job.
+  dependency-audit:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: List vulnerable packages
+        run: |
+          dotnet restore
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee audit.txt
+          if grep -q "has the following vulnerable packages" audit.txt; then exit 1; fi

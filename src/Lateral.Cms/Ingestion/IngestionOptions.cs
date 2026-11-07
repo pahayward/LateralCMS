@@ -19,6 +19,16 @@ public sealed class IngestionOptions
     [Range(1, int.MaxValue)]
     public int MaxPayloadBytes { get; set; } = 256 * 1024;
 
+    /// <summary>
+    /// Batches being read and validated at once. Each holds up to <see cref="MaxBodyBytes"/> in memory, so this bounds the memory
+    /// a burst of (authenticated) senders can use. Others wait in a queue; past <see cref="AcceptQueueLimit"/> they get <c>429</c>.
+    /// </summary>
+    [Range(1, 1024)]
+    public int MaxConcurrentAccepts { get; set; } = 16;
+
+    [Range(0, 100_000)]
+    public int AcceptQueueLimit { get; set; } = 256;
+
     /// <summary>Deepest accepted JSON nesting (guards the parser against hostile input).</summary>
     [Range(1, 1024)]
     public int MaxJsonDepth { get; set; } = 32;

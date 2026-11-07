@@ -18,9 +18,15 @@ public sealed class ConsoleOptions
     /// In Development only: the CMS's own development settings file, read for its test accounts so the
     /// credentials live in one place. Ignored if the file does not exist.
     /// </summary>
-    public string? CmsDevSettingsPath { get; set; } = "../../src/Lateral.Cms/appsettings.Development.json";
+    public string? CmsDevSettingsPath { get; set; } = "../../src/Lateral.Cms/App_Data/dev-credentials.json";
 
     /// <summary>Explicit accounts, keyed <c>cms</c>, <c>user</c> or <c>admin</c>. They win over the CMS settings file.</summary>
+    /// <summary>
+    /// The console holds live credentials and can act as an admin, so it refuses to start outside the Development environment. Set
+    /// this to run it anyway (for example against a staging service), knowingly.
+    /// </summary>
+    public bool AllowNonDevelopment { get; set; }
+
     public Dictionary<string, AccountOptions> Accounts { get; set; } = new();
 
     public LimitsOptions Limits { get; set; } = new();
@@ -44,4 +50,11 @@ public sealed class LimitsOptions
     public long MaxPayloadBytes { get; set; } = 256 * 1024;
 
     public int MaxBatchSize { get; set; } = 500;
+
+    /// <summary>Largest object the CMS takes in one PUT; bigger ones are uploaded in parts. Mirrors the CMS default, for the page's choice only.</summary>
+    public long MaxSimpleBytes { get; set; } = 8L * 1024 * 1024;
+
+    public long MinPartBytes { get; set; } = 5L * 1024 * 1024;
+
+    public long MaxPartBytes { get; set; } = 64L * 1024 * 1024;
 }

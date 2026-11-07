@@ -163,7 +163,7 @@ public class ObservabilityTests(CmsFactory factory) : IClassFixture<CmsFactory>
                 new HashSet<string>
                 {
                     "cms.events.processed", "cms.events.queued", "cms.batch.duration", "cms.batch.accept.duration", "cms.queue.lag",
-                    "cms.batch.retries", "cms.batch.set_aside", "cms.queue.pending", "cms.queue.failed", "cms.queue.oldest_age",
+                    "cms.batch.retries", "cms.batch.set_aside", "cms.queue.pending", "cms.queue.failed", "cms.queue.failed_bytes", "cms.queue.oldest_age",
                 },
                 published);
         }

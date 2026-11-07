@@ -20,8 +20,16 @@ public static class ConsoleEndpoints
     private const long MaxProbeBytes = 16L * 1024 * 1024 * 1024;
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(20);
 
-    private static readonly string[] ProxiedMethods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
-    private static readonly string[] ForwardedResponseHeaders = ["X-Correlation-Id", "Retry-After", "WWW-Authenticate", "Allow"];
+    private static readonly string[] ProxiedMethods = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"];
+    private static readonly string[] ForwardedResponseHeaders =
+    [
+        "X-Correlation-Id", "Retry-After", "WWW-Authenticate", "Allow",
+        // What a ranged, resumable download needs the page to see.
+        "Content-Range", "Accept-Ranges", "ETag", "Content-Disposition", "Last-Modified", "Content-Length",
+    ];
+
+    // Request headers the page may set for assets: ranges, conditional requests and the checksum of what it sends.
+    private static readonly string[] ForwardedRequestHeaders = ["Range", "If-Range", "If-None-Match", "X-Content-SHA256"];
 
     public static IEndpointRouteBuilder MapConsoleEndpoints(this IEndpointRouteBuilder app)
     {
@@ -91,6 +99,14 @@ public static class ConsoleEndpoints
         if (context.Request.Headers.Accept.Count > 0)
         {
             request.Headers.TryAddWithoutValidation("Accept", context.Request.Headers.Accept.ToString());
+        }
+
+        foreach (var name in ForwardedRequestHeaders)
+        {
+            if (context.Request.Headers.TryGetValue(name, out var values))
+            {
+                request.Headers.TryAddWithoutValidation(name, values.ToArray());
+            }
         }
 
         if (context.Request.ContentLength is > 0 || context.Request.Headers.ContainsKey("Transfer-Encoding"))

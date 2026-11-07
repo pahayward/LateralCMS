@@ -12,6 +12,7 @@ namespace Lateral.Cms.Ingestion;
 public static class IngestionEndpoints
 {
     public const string CorrelationHeader = "X-Correlation-Id";
+    public const string AcceptLimiter = "accept";
 
     public static IServiceCollection AddCmsIngestion(this IServiceCollection services)
     {
@@ -26,10 +27,26 @@ public static class IngestionEndpoints
         return services;
     }
 
+    /// <summary>Bounds how many batches are read into memory at once (see <see cref="IngestionOptions.MaxConcurrentAccepts"/>).</summary>
+    public static void AddIngestionRateLimits(this Microsoft.AspNetCore.RateLimiting.RateLimiterOptions limits) =>
+        limits.AddPolicy(AcceptLimiter, http =>
+        {
+            var settings = http.RequestServices.GetRequiredService<IOptions<IngestionOptions>>().Value;
+            return System.Threading.RateLimiting.RateLimitPartition.GetConcurrencyLimiter(
+                "accept",
+                _ => new System.Threading.RateLimiting.ConcurrencyLimiterOptions
+                {
+                    PermitLimit = settings.MaxConcurrentAccepts,
+                    QueueLimit = settings.AcceptQueueLimit,
+                    QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst,
+                });
+        });
+
     public static IEndpointRouteBuilder MapIngestionEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapPost("/cms/events", HandleAsync)
             .RequireAuthorization(Policies.CmsIngest)
+            .RequireRateLimiting(AcceptLimiter)
             .WithName("IngestCmsEvents");
         return app;
     }

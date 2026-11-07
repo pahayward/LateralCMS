@@ -365,10 +365,12 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
 
     // ------------------------------------------------------------ the page itself
 
-    [Fact]
-    public async Task The_page_is_served_with_a_strict_content_security_policy()
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/engineering")]
+    public async Task Each_page_is_served_with_a_strict_content_security_policy(string page)
     {
-        var response = await _factory.CreateClient().GetAsync("/");
+        var response = await _factory.CreateClient().GetAsync(page);
 
         var policy = string.Join(' ', response.Headers.GetValues("Content-Security-Policy"));
         Assert.Contains("script-src 'self'", policy);
@@ -377,10 +379,12 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
         Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
     }
 
-    [Fact]
-    public async Task The_html_has_no_inline_script_or_style_that_the_policy_would_block()
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/engineering")]
+    public async Task The_html_has_no_inline_script_or_style_that_the_policy_would_block(string page)
     {
-        var html = await _factory.CreateClient().GetStringAsync("/");
+        var html = await _factory.CreateClient().GetStringAsync(page);
 
         Assert.DoesNotMatch(@"<script(?![^>]*\bsrc=)", html);
         Assert.DoesNotMatch(@"\sstyle\s*=", html);
@@ -396,9 +400,36 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     [InlineData("new Function")]
     public async Task The_script_never_turns_text_from_the_cms_into_markup(string forbidden)
     {
-        var script = await _factory.CreateClient().GetStringAsync("/app.js");
+        // Every script either page loads: the engineering console's and the photo library's.
+        foreach (var name in new[] { "app.js", "assets.js", "photos-lib.js", "photos-store.js", "photos-app.js" })
+        {
+            var script = await _factory.CreateClient().GetStringAsync("/" + name);
 
-        Assert.DoesNotContain(forbidden, script);
+            Assert.False(script.Contains(forbidden), $"{name} contains {forbidden}");
+        }
+    }
+
+    [Fact]
+    public async Task The_photo_library_is_the_front_page_and_the_engineering_console_is_one_click_away()
+    {
+        var client = _factory.CreateClient();
+
+        var photos = await client.GetStringAsync("/");
+        var engineering = await client.GetStringAsync("/engineering");
+
+        Assert.Contains("<title>Lateral Photos</title>", photos);
+        Assert.Contains("href=\"/engineering\"", photos);
+        Assert.Contains("<title>Engineering", engineering);
+        Assert.Contains("CMS test console", engineering);
+        Assert.Contains("href=\"/\"", engineering);
+    }
+
+    [Fact]
+    public async Task Scripts_and_styles_are_always_revalidated_so_an_edit_shows_at_once()
+    {
+        var response = await _factory.CreateClient().GetAsync("/photos-app.js");
+
+        Assert.Equal("no-cache", response.Headers.CacheControl?.ToString());
     }
 
     private static HttpResponseMessage Answer(HttpStatusCode status, string json) => FakeCms.Json(status, json);

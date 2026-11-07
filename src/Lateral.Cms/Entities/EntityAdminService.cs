@@ -20,7 +20,11 @@ public sealed class EntityAdminService(
         string id, bool disabled, string admin, CancellationToken cancellationToken)
     {
         using var _ = await gate.AcquireAsync(cancellationToken);
+        db.ChangeTracker.Clear();
         var now = time.GetUtcNow().UtcDateTime;
+
+        // The change and its audit record are one transaction.
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
 
         // The WHERE clause makes a repeat call a no-op, which keeps the original DisabledBy/DisabledAt.
         var changed = disabled
@@ -40,6 +44,14 @@ public sealed class EntityAdminService(
                         .SetProperty(e => e.DisabledBy, (string?)null)
                         .SetProperty(e => e.DisabledAt, (DateTime?)null),
                     cancellationToken);
+
+        if (changed > 0)
+        {
+            db.Audit(now, admin, disabled ? "entity.disabled" : "entity.enabled", id);
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        await transaction.CommitAsync(cancellationToken);
 
         var state = await db.Entities
             .AsNoTracking()

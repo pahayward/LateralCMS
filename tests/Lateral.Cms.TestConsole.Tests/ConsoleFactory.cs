@@ -76,6 +76,7 @@ public sealed class ConsoleFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["Console:CmsBaseUrl"] = "http://cms.test",
+            ["Console:AllowNonDevelopment"] = "true", // these tests run in the Testing environment
             ["Console:Accounts:cms:Username"] = CmsUser,
             ["Console:Accounts:cms:Password"] = CmsPassword,
             ["Console:Accounts:user:Username"] = UserName,

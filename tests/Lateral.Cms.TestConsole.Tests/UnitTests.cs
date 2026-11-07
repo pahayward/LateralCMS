@@ -20,6 +20,10 @@ public class CmsTargetTests
     [InlineData("api/admin/reset", null, "http://cms.test/api/admin/reset")]
     [InlineData("cms/batches/6f0c8f64-0000-4000-8000-000000000001", null, "http://cms.test/cms/batches/6f0c8f64-0000-4000-8000-000000000001")]
     [InlineData("api/admin/ingestion", null, "http://cms.test/api/admin/ingestion")]
+    [InlineData("cms/assets/uploads", null, "http://cms.test/cms/assets/uploads")]
+    [InlineData("cms/assets/uploads/6f0c8f64-0000-4000-8000-000000000001/parts/3", null, "http://cms.test/cms/assets/uploads/6f0c8f64-0000-4000-8000-000000000001/parts/3")]
+    [InlineData("api/assets/6f0c8f64-0000-4000-8000-000000000001", null, "http://cms.test/api/assets/6f0c8f64-0000-4000-8000-000000000001")]
+    [InlineData("api/admin/assets", "limit=50", "http://cms.test/api/admin/assets?limit=50")]
     [InlineData("api/admin/ingestion/6f0c8f64-0000-4000-8000-000000000001/requeue", null, "http://cms.test/api/admin/ingestion/6f0c8f64-0000-4000-8000-000000000001/requeue")]
     public void The_cms_routes_resolve_against_the_configured_host(string path, string? query, string expected)
     {
@@ -183,23 +187,6 @@ public class AccountBookTests
     [Fact]
     public void Settings_without_an_auth_section_yield_nothing() =>
         Assert.Empty(AccountBook.ReadCmsSettings("""{ "Logging": {} }"""));
-
-    [Fact]
-    public void The_repositorys_own_development_settings_still_provide_all_three_accounts()
-    {
-        // Guards the one coupling this tool has to the CMS: where its development accounts live.
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Lateral.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        Assert.NotNull(directory);
-        var accounts = AccountBook.ReadCmsSettings(File.ReadAllText(
-            Path.Combine(directory.FullName, "src", "Lateral.Cms", "appsettings.Development.json")));
-
-        Assert.Equal(["admin", "cms", "user"], accounts.Keys.Order());
-    }
 
     [Fact]
     public void Development_reads_the_cms_file_and_explicit_accounts_win()

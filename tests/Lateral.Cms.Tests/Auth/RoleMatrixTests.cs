@@ -8,6 +8,7 @@ namespace Lateral.Cms.Tests.Auth;
 [Trait("req", "SE-01")]
 [Trait("req", "SE-02")]
 [Trait("req", "IN-01")]
+[Trait("req", "BL-02")]
 public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
 {
     private const string GetTarget = "matrix-get";
@@ -43,6 +44,25 @@ public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
 
         // Allowed for an admin, but the batch used here does not exist, so "allowed" shows as 404 rather than 200.
         Row("POST /api/admin/ingestion/{batchId:guid}/requeue", unauthorized, forbidden, forbidden, notFound);
+
+        // Assets. The CMS uploads; the CMS and admins follow an asset; users and admins download; admins administer. The ids
+        // used here do not exist, so "allowed" shows as 404 (or 409 where the route checks state first).
+        const HttpStatusCode accepted = HttpStatusCode.Accepted;
+        const HttpStatusCode created = HttpStatusCode.Created;
+        const HttpStatusCode conflict = HttpStatusCode.Conflict;
+        Row("PUT /cms/assets/{key}",                                          unauthorized, accepted,  forbidden, forbidden);
+        Row("POST /cms/assets/uploads",                                       unauthorized, created,   forbidden, forbidden);
+        Row("PUT /cms/assets/uploads/{uploadId:guid}/parts/{partNumber:int}", unauthorized, notFound,  forbidden, forbidden);
+        Row("POST /cms/assets/uploads/{uploadId:guid}/complete",              unauthorized, notFound,  forbidden, forbidden);
+        Row("DELETE /cms/assets/uploads/{uploadId:guid}",                     unauthorized, notFound,  forbidden, forbidden);
+        Row("GET /cms/assets/{id:guid}",                                      unauthorized, notFound,  forbidden, notFound);
+        Row("GET /api/assets/{id:guid}",                                      unauthorized, forbidden, notFound,  notFound);
+        Row("HEAD /api/assets/{id:guid}",                                     unauthorized, forbidden, notFound,  notFound);
+        Row("DELETE /api/assets/{id:guid}",                                   unauthorized, forbidden, forbidden, notFound);
+        Row("GET /api/admin/assets",                                          unauthorized, forbidden, forbidden, ok);
+        Row("POST /api/admin/assets/{id:guid}/rescan",                        unauthorized, forbidden, forbidden, conflict);
+        Row("POST /api/admin/assets/{id:guid}/requeue",                       unauthorized, forbidden, forbidden, conflict);
+        Row("POST /api/admin/assets/rescan-outdated",                         unauthorized, forbidden, forbidden, ok);
         return data;
     }
 
@@ -75,6 +95,19 @@ public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
             "GET /api/admin/ingestion" => new HttpRequestMessage(HttpMethod.Get, "/api/admin/ingestion"),
             "POST /api/admin/ingestion/{batchId:guid}/requeue" =>
                 new HttpRequestMessage(HttpMethod.Post, $"/api/admin/ingestion/{Guid.NewGuid()}/requeue"),
+            "PUT /cms/assets/{key}" => new HttpRequestMessage(HttpMethod.Put, $"/cms/assets/matrix-{Guid.NewGuid():N}") { Content = new StringContent("matrix content") },
+            "POST /cms/assets/uploads" => new HttpRequestMessage(HttpMethod.Post, "/cms/assets/uploads") { Content = Evt.Raw("""{"key":"matrix","size":10}""") },
+            "PUT /cms/assets/uploads/{uploadId:guid}/parts/{partNumber:int}" => new HttpRequestMessage(HttpMethod.Put, $"/cms/assets/uploads/{Guid.NewGuid()}/parts/1") { Content = new StringContent("x") },
+            "POST /cms/assets/uploads/{uploadId:guid}/complete" => new HttpRequestMessage(HttpMethod.Post, $"/cms/assets/uploads/{Guid.NewGuid()}/complete") { Content = Evt.Raw("""{"parts":[{"partNumber":1}]}""") },
+            "DELETE /cms/assets/uploads/{uploadId:guid}" => new HttpRequestMessage(HttpMethod.Delete, $"/cms/assets/uploads/{Guid.NewGuid()}"),
+            "GET /cms/assets/{id:guid}" => new HttpRequestMessage(HttpMethod.Get, $"/cms/assets/{Guid.NewGuid()}"),
+            "GET /api/assets/{id:guid}" => new HttpRequestMessage(HttpMethod.Get, $"/api/assets/{Guid.NewGuid()}"),
+            "HEAD /api/assets/{id:guid}" => new HttpRequestMessage(HttpMethod.Head, $"/api/assets/{Guid.NewGuid()}"),
+            "DELETE /api/assets/{id:guid}" => new HttpRequestMessage(HttpMethod.Delete, $"/api/assets/{Guid.NewGuid()}"),
+            "GET /api/admin/assets" => new HttpRequestMessage(HttpMethod.Get, "/api/admin/assets"),
+            "POST /api/admin/assets/{id:guid}/rescan" => new HttpRequestMessage(HttpMethod.Post, $"/api/admin/assets/{Guid.NewGuid()}/rescan"),
+            "POST /api/admin/assets/{id:guid}/requeue" => new HttpRequestMessage(HttpMethod.Post, $"/api/admin/assets/{Guid.NewGuid()}/requeue"),
+            "POST /api/admin/assets/rescan-outdated" => new HttpRequestMessage(HttpMethod.Post, "/api/admin/assets/rescan-outdated"),
             _ => throw new ArgumentOutOfRangeException(nameof(endpoint)),
         };
 
@@ -89,7 +122,7 @@ public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
         var mapped = factory.Services
             .GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>().Endpoints
             .OfType<Microsoft.AspNetCore.Routing.RouteEndpoint>()
-            .Select(e => $"{e.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.IHttpMethodMetadata>()?.HttpMethods.Single()} /{e.RoutePattern.RawText!.Trim('/')}")
+            .SelectMany(e => (e.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.IHttpMethodMetadata>()?.HttpMethods ?? []).Select(m => $"{m} /{e.RoutePattern.RawText!.Trim('/')}"))
             .ToHashSet();
 
         var covered = Matrix().Select(row => (string)row[0]).ToHashSet();

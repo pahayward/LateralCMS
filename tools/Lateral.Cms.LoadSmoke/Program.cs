@@ -4,9 +4,11 @@
 //
 //   dotnet build -c Release
 //   dotnet run -c Release --project tools/Lateral.Cms.LoadSmoke -- --senders 8 --batches 25 --events 100 --payload 1024 --log Warning
+//   dotnet run -c Release --project tools/Lateral.Cms.LoadSmoke -- --asset-mib 256 --part-mib 16 --uploaders 4 --ranges 8   (the asset store instead)
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -73,6 +75,11 @@ try
     var cms = Basic(cmsUser, cmsPassword);
     var user = Basic(userName, userPassword);
     var admin = Basic(adminName, adminPassword);
+
+    if (options.AssetMiB > 0)
+    {
+        return await RunAssetsAsync(http, cms, user, options);
+    }
     var payload = new string('x', Math.Max(0, options.PayloadBytes - 24));
     var latencies = new List<double>(options.Senders * options.Batches);
     var latencyLock = new object();
@@ -181,6 +188,145 @@ finally
     }
 }
 
+/// <summary>Uploads one large object in parallel parts, waits for the scanner, then downloads it serially and in parallel ranges.</summary>
+static async Task<int> RunAssetsAsync(HttpClient http, AuthenticationHeaderValue cms, AuthenticationHeaderValue user, Options options)
+{
+    const int MiB = 1024 * 1024;
+    var size = options.AssetMiB * MiB;
+    var data = new byte[size];
+    new Random(7).NextBytes(data);
+    new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(data, 0);
+    var expected = Convert.ToHexStringLower(SHA256.HashData(data));
+    var partSize = options.PartMiB * MiB;
+    var parts = (size + partSize - 1) / partSize;
+    Console.WriteLine($"Asset store: {options.AssetMiB} MiB in {parts} parts of {options.PartMiB} MiB, {options.Uploaders} uploads and {options.Ranges} ranges at a time.");
+
+    // Upload
+    var uploadStarted = Stopwatch.GetTimestamp();
+    using var start = new HttpRequestMessage(HttpMethod.Post, "/cms/assets/uploads") { Content = new StringContent(JsonSerializer.Serialize(new { key = "load.png", contentType = "image/png", size }), Encoding.UTF8, "application/json") };
+    start.Headers.Authorization = cms;
+    using var started = await http.SendAsync(start);
+    started.EnsureSuccessStatusCode();
+    using var begun = JsonDocument.Parse(await started.Content.ReadAsStringAsync());
+    var uploadId = begun.RootElement.GetProperty("uploadId").GetGuid();
+
+    var receipts = new (int Number, string Sha)[parts];
+    using var gate = new SemaphoreSlim(options.Uploaders);
+    await Task.WhenAll(Enumerable.Range(0, parts).Select(async i =>
+    {
+        await gate.WaitAsync();
+        try
+        {
+            var offset = i * partSize;
+            var count = Math.Min(partSize, size - offset);
+            var sha = Convert.ToHexStringLower(SHA256.HashData(data.AsSpan(offset, count)));
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"/cms/assets/uploads/{uploadId}/parts/{i + 1}") { Content = new ByteArrayContent(data, offset, count) };
+            request.Headers.Authorization = cms;
+            request.Headers.Add("X-Content-SHA256", sha);
+            using var response = await http.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            receipts[i] = (i + 1, sha);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }));
+
+    using var complete = new HttpRequestMessage(HttpMethod.Post, $"/cms/assets/uploads/{uploadId}/complete")
+    {
+        Content = new StringContent(JsonSerializer.Serialize(new { parts = receipts.Select(r => new { partNumber = r.Number, sha256 = r.Sha }) }), Encoding.UTF8, "application/json"),
+    };
+    complete.Headers.Authorization = cms;
+    using var completed = await http.SendAsync(complete);
+    completed.EnsureSuccessStatusCode();
+    using var asset = JsonDocument.Parse(await completed.Content.ReadAsStringAsync());
+    var id = asset.RootElement.GetProperty("id").GetGuid();
+    var uploadSeconds = Stopwatch.GetElapsedTime(uploadStarted).TotalSeconds;
+
+    // Scan
+    var scanStarted = Stopwatch.GetTimestamp();
+    string state;
+    do
+    {
+        using var poll = new HttpRequestMessage(HttpMethod.Get, $"/cms/assets/{id}");
+        poll.Headers.Authorization = cms;
+        using var polled = await http.SendAsync(poll);
+        using var body = JsonDocument.Parse(await polled.Content.ReadAsStringAsync());
+        state = body.RootElement.GetProperty("state").GetString()!;
+        if (state == "quarantined")
+        {
+            await Task.Delay(50);
+        }
+    }
+    while (state == "quarantined" && Stopwatch.GetElapsedTime(scanStarted).TotalMinutes < 5);
+
+    var scanSeconds = Stopwatch.GetElapsedTime(scanStarted).TotalSeconds;
+    if (state != "clean")
+    {
+        Console.Error.WriteLine($"The asset ended in state '{state}'.");
+        return 6;
+    }
+
+    // Serial download
+    var serialStarted = Stopwatch.GetTimestamp();
+    using var serialRequest = new HttpRequestMessage(HttpMethod.Get, $"/api/assets/{id}");
+    serialRequest.Headers.Authorization = user;
+    using var serial = await http.SendAsync(serialRequest, HttpCompletionOption.ResponseHeadersRead);
+    serial.EnsureSuccessStatusCode();
+    using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+    await using (var stream = await serial.Content.ReadAsStreamAsync())
+    {
+        var buffer = new byte[256 * 1024];
+        int read;
+        while ((read = await stream.ReadAsync(buffer)) > 0)
+        {
+            hash.AppendData(buffer, 0, read);
+        }
+    }
+
+    var serialSeconds = Stopwatch.GetElapsedTime(serialStarted).TotalSeconds;
+    var serialOk = Convert.ToHexStringLower(hash.GetHashAndReset()) == expected;
+
+    // Parallel ranges into one buffer
+    var rangeStarted = Stopwatch.GetTimestamp();
+    var target = new byte[size];
+    var chunk = (size + options.Ranges - 1) / options.Ranges;
+    await Task.WhenAll(Enumerable.Range(0, options.Ranges).Select(async i =>
+    {
+        var from = (long)i * chunk;
+        var to = Math.Min(size, from + chunk) - 1;
+        if (from > to)
+        {
+            return;
+        }
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/assets/{id}");
+        request.Headers.Authorization = user;
+        request.Headers.Range = new RangeHeaderValue(from, to);
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+        response.EnsureSuccessStatusCode();
+        await using var body = await response.Content.ReadAsStreamAsync();
+        var offset = (int)from;
+        int n;
+        while (offset <= to && (n = await body.ReadAsync(target.AsMemory(offset, (int)(to - offset + 1)))) > 0)
+        {
+            offset += n;
+        }
+    }));
+
+    var rangeSeconds = Stopwatch.GetElapsedTime(rangeStarted).TotalSeconds;
+    var rangeOk = Convert.ToHexStringLower(SHA256.HashData(target)) == expected;
+
+    Console.WriteLine();
+    Console.WriteLine($"Upload          {options.AssetMiB} MiB in {uploadSeconds:F2} s = {options.AssetMiB / uploadSeconds:F0} MiB/s ({parts} parts, {options.Uploaders} at a time)");
+    Console.WriteLine($"Scan            {scanSeconds:F2} s until clean ({options.AssetMiB / Math.Max(scanSeconds, 0.001):F0} MiB/s)");
+    Console.WriteLine($"Download serial {serialSeconds:F2} s = {options.AssetMiB / serialSeconds:F0} MiB/s, sha256 {(serialOk ? "verified" : "MISMATCH")}");
+    Console.WriteLine($"Download ranges {rangeSeconds:F2} s = {options.AssetMiB / rangeSeconds:F0} MiB/s with {options.Ranges} parallel ranges, sha256 {(rangeOk ? "verified" : "MISMATCH")}");
+    Console.WriteLine($"Machine         {Environment.MachineName}, {Environment.ProcessorCount} logical cores, {System.Runtime.InteropServices.RuntimeInformation.OSDescription}, {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}, {DateTime.UtcNow:yyyy-MM-dd}");
+    return serialOk && rangeOk ? 0 : 5;
+}
+
 static AuthenticationHeaderValue Basic(string user, string password) =>
     new("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{user}:{password}")));
 
@@ -226,7 +372,7 @@ static string FindRepoRoot()
     return directory?.FullName ?? Directory.GetCurrentDirectory();
 }
 
-internal sealed record Options(int Senders, int Batches, int Events, int PayloadBytes, string LogLevel, int Port, string? Service)
+internal sealed record Options(int Senders, int Batches, int Events, int PayloadBytes, string LogLevel, int Port, string? Service, int AssetMiB, int PartMiB, int Uploaders, int Ranges)
 {
     public static Options Parse(string[] args)
     {
@@ -236,6 +382,7 @@ internal sealed record Options(int Senders, int Batches, int Events, int Payload
         return new Options(
             int.Parse(Value("senders", "8")), int.Parse(Value("batches", "25")), int.Parse(Value("events", "100")),
             int.Parse(Value("payload", "1024")), Value("log", "Warning"), int.Parse(Value("port", "5290")),
-            Value("service", "") is { Length: > 0 } service ? service : null);
+            Value("service", "") is { Length: > 0 } service ? service : null,
+            int.Parse(Value("asset-mib", "0")), int.Parse(Value("part-mib", "16")), int.Parse(Value("uploaders", "4")), int.Parse(Value("ranges", "8")));
     }
 }

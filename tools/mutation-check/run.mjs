@@ -18,14 +18,15 @@ const mutations = JSON.parse(readFileSync(join(here, 'mutations.json'), 'utf8'))
 const only = new Set(process.argv.slice(2));
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 
-function runTests() {
+function runTests(project) {
+  // The documentation checks (DeliveryTests) verify this very log, so they never count as catching a defect.
   const result = spawnSync(
-    'dotnet', ['test', join(repo, 'tests', 'Lateral.Cms.Tests'), '-c', 'Release', '--nologo', '-v', 'minimal'],
+    'dotnet', ['test', join(repo, project ?? 'tests/Lateral.Cms.Tests'), '-c', 'Release', '--nologo', '-v', 'minimal', '--filter', 'FullyQualifiedName!~DeliveryTests'],
     { cwd: repo, encoding: 'utf8', timeout: 6 * 60 * 1000, maxBuffer: 64 * 1024 * 1024, env: { ...process.env, DOTNET_ROLL_FORWARD: 'Major', CI: '' } });
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
   if (result.error?.code === 'ETIMEDOUT') return { outcome: 'killed', how: 'the run hung (timeout)', failed: [] };
   if (/error CS\d+/.test(output)) return { outcome: 'invalid', how: 'does not compile', failed: [] };
-  const failed = [...output.matchAll(/^\s+Failed (Lateral\.Cms\.Tests\.\S+)/gm)].map((m) => m[1].replace(/\(.*$/, ''));
+  const failed = [...output.matchAll(/^\s+Failed (Lateral\.Cms\.\S+)/gm)].map((m) => m[1].replace(/\(.*$/, ''));
   const unique = [...new Set(failed)];
   if (unique.length > 0) return { outcome: 'killed', how: 'a test failed', failed: unique };
   return /Passed!/.test(output) ? { outcome: 'SURVIVED', how: 'all tests passed', failed: [] } : { outcome: 'killed', how: 'the run did not finish cleanly', failed: [] };
@@ -46,7 +47,7 @@ for (const m of mutations) {
   } else {
     try {
       writeFileSync(path, original.replace(find, () => replace));
-      entry = { ...m, ...runTests() };
+      entry = { ...m, ...runTests(m.project) };
     } finally {
       writeFileSync(path, original);
       if (sha(readFileSync(path, 'utf8')) !== sha(original)) throw new Error(`Could not restore ${m.file}`);

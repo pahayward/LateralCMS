@@ -19,6 +19,14 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
 
     public DbSet<EventRow> Events => Set<EventRow>();
 
+    public DbSet<AssetRow> Assets => Set<AssetRow>();
+
+    public DbSet<UploadRow> Uploads => Set<UploadRow>();
+
+    public DbSet<UploadPartRow> UploadParts => Set<UploadPartRow>();
+
+    public DbSet<AuditRow> AuditLog => Set<AuditRow>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         // SQLite has no timezone-aware type and hands back DateTimeKind.Unspecified. Everything stored is UTC, so
@@ -29,6 +37,7 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
         configurationBuilder.Properties<EventOutcome>().HaveConversion<SnakeCaseEnumConverter<EventOutcome>>().HaveMaxLength(32);
         configurationBuilder.Properties<BatchState>().HaveConversion<SnakeCaseEnumConverter<BatchState>>().HaveMaxLength(16);
         configurationBuilder.Properties<CmsEventType>().HaveConversion<SnakeCaseEnumConverter<CmsEventType>>().HaveMaxLength(16);
+        configurationBuilder.Properties<AssetState>().HaveConversion<SnakeCaseEnumConverter<AssetState>>().HaveMaxLength(16);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -91,6 +100,51 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
             row.Property(e => e.PayloadChecksum).HasMaxLength(100);
             row.HasIndex(e => new { e.BatchId, e.Sequence }).IsUnique();
             row.HasIndex(e => e.EntityId);
+        });
+
+        modelBuilder.Entity<AssetRow>(asset =>
+        {
+            asset.ToTable("Assets");
+            asset.HasKey(a => a.Id);
+            asset.Property(a => a.Key).HasMaxLength(200).IsRequired();
+            asset.Property(a => a.ContentType).HasMaxLength(100).IsRequired();
+            asset.Property(a => a.DetectedType).HasMaxLength(100);
+            asset.Property(a => a.Sha256).HasMaxLength(64).IsRequired();
+            asset.Property(a => a.ScannerName).HasMaxLength(64);
+            asset.Property(a => a.ScannerVersion).HasMaxLength(64);
+            asset.Property(a => a.Verdict).HasMaxLength(32);
+            asset.Property(a => a.Signature).HasMaxLength(100);
+            asset.Property(a => a.LastError).HasMaxLength(200);
+
+            // Serves "which asset to scan next" (quarantined, due, oldest first) and the quota sums, as index seeks.
+            asset.HasIndex(a => new { a.State, a.NextAttemptAt, a.CreatedAt }).HasDatabaseName("IX_Assets_Scan");
+            asset.HasIndex(a => a.Sha256);
+        });
+
+        modelBuilder.Entity<UploadRow>(upload =>
+        {
+            upload.ToTable("Uploads");
+            upload.HasKey(u => u.UploadId);
+            upload.Property(u => u.Key).HasMaxLength(200).IsRequired();
+            upload.Property(u => u.ContentType).HasMaxLength(100).IsRequired();
+            upload.HasIndex(u => u.ExpiresAt);
+        });
+
+        modelBuilder.Entity<UploadPartRow>(part =>
+        {
+            part.ToTable("UploadParts");
+            part.HasKey(p => new { p.UploadId, p.PartNumber });
+            part.Property(p => p.Sha256).HasMaxLength(64).IsRequired();
+        });
+
+        modelBuilder.Entity<AuditRow>(audit =>
+        {
+            audit.ToTable("AuditLog");
+            audit.HasKey(a => a.Id);
+            audit.Property(a => a.Actor).HasMaxLength(320).IsRequired();
+            audit.Property(a => a.Action).HasMaxLength(64).IsRequired();
+            audit.Property(a => a.Target).HasMaxLength(200).IsRequired();
+            audit.Property(a => a.Detail).HasMaxLength(500);
         });
     }
 }

@@ -334,5 +334,273 @@
     "file": "src/Lateral.Cms/Admin/AdminEndpoints.cs",
     "find": "if (!app.Services.GetRequiredService<IOptions<AdminOptions>>().Value.AllowReset)",
     "replace": "if (false)"
+  },
+  {
+    "id": "M43",
+    "area": "Assets",
+    "rule": "serve an asset that is not clean",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "reader.Assets.Where(a => a.Id == id && a.State == AssetState.Clean)",
+    "replace": "reader.Assets.Where(a => a.Id == id)"
+  },
+  {
+    "id": "M44",
+    "area": "Assets",
+    "rule": "skip the checksum check on uploads",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (expected is not null && !string.Equals(expected.Trim(), actual, StringComparison.OrdinalIgnoreCase))",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M45",
+    "area": "Assets",
+    "rule": "do not check the assembled size against the declared size",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (total != upload.DeclaredSize)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M46",
+    "area": "Assets",
+    "rule": "allow a part below the minimum that is not the last",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (i < listed.Count - 1 && row.Size < Settings.MinPartBytes)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M47",
+    "area": "Assets",
+    "rule": "no range support on downloads",
+    "file": "src/Lateral.Cms/Assets/AssetEndpoints.cs",
+    "find": "enableRangeProcessing: true);",
+    "replace": "enableRangeProcessing: false);"
+  },
+  {
+    "id": "M48",
+    "area": "Assets",
+    "rule": "serve the type the sender claimed instead of the detected one",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "row.DetectedType ?? \"application/octet-stream\"",
+    "replace": "row.ContentType"
+  },
+  {
+    "id": "M49",
+    "area": "Assets",
+    "rule": "store size cap not enforced before an upload starts",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (await UsedBytesAsync(cancellationToken) + incoming > Settings.MaxBytes)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M50",
+    "area": "Assets",
+    "rule": "the sweeper takes files that are still young",
+    "file": "src/Lateral.Cms/Assets/AssetWorkers.cs",
+    "find": "foreach (var file in store.Files(AssetArea.Quarantine).Where(f => f.LastWriteTimeUtc < oldest).ToList())",
+    "replace": "foreach (var file in store.Files(AssetArea.Quarantine).ToList())"
+  },
+  {
+    "id": "M51",
+    "area": "Assets",
+    "rule": "a delete leaves the content on disk",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "wipe = shared ? null : store.BlobPath(asset.Sha256);",
+    "replace": "wipe = null;"
+  },
+  {
+    "id": "M52",
+    "area": "Assets",
+    "rule": "a delete removes content another asset still uses",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "var shared = await db.Assets.AnyAsync(a => a.Sha256 == asset.Sha256 && a.State != AssetState.Rejected && a.Id != id, cancellationToken);",
+    "replace": "var shared = false;"
+  },
+  {
+    "id": "M53",
+    "area": "Assets",
+    "rule": "the wipe does not overwrite before deleting",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "await file.WriteAsync(zeros.AsMemory(0, (int)Math.Min(zeros.Length, file.Length - written)), cancellationToken);",
+    "replace": "await Task.CompletedTask;"
+  },
+  {
+    "id": "M54",
+    "area": "Scanner",
+    "rule": "a scanner exception is treated as clean",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "failure = ex.GetType().Name;",
+    "replace": "result = new ScanResult(ScanVerdict.Clean, null, null, \"x\", \"x\");"
+  },
+  {
+    "id": "M55",
+    "area": "Scanner",
+    "rule": "a scan that keeps failing is never set aside",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "var final = asset.Attempts >= settings.ScanMaxAttempts;",
+    "replace": "var final = false;"
+  },
+  {
+    "id": "M56",
+    "area": "Scanner",
+    "rule": "a rejected asset keeps its quarantined bytes",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "await store.WipeAsync(quarantine, cancellationToken);\n            if (!await store.WipeAsync(store.BlobPath(asset.Sha256), cancellationToken))",
+    "replace": "if (!await store.WipeAsync(store.BlobPath(asset.Sha256), cancellationToken))"
+  },
+  {
+    "id": "M57",
+    "area": "Scanner",
+    "rule": "re-scanning outdated assets leaves them served meanwhile",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "s => s.SetProperty(a => a.State, AssetState.Quarantined).SetProperty(a => a.Attempts, 0).SetProperty(a => a.NextAttemptAt, now),",
+    "replace": "s => s.SetProperty(a => a.State, AssetState.Clean).SetProperty(a => a.Attempts, 0).SetProperty(a => a.NextAttemptAt, now),"
+  },
+  {
+    "id": "M58",
+    "area": "Scanner",
+    "rule": "active content in svg, html and pdf is not flagged",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": "if (found?.Hit == Hit.ActiveContent)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M59",
+    "area": "Scanner",
+    "rule": "archive compression ratio is not checked",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": " || (compressed > 0 && expanded / compressed > settings.MaxCompressionRatio)",
+    "replace": ""
+  },
+  {
+    "id": "M60",
+    "area": "Scanner",
+    "rule": "an executable dressed as another type passes",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": "if (!claimsExecutable)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M61",
+    "area": "Assets",
+    "rule": "downloads are buffered whole in memory",
+    "file": "src/Lateral.Cms/Assets/AssetEndpoints.cs",
+    "find": "return Results.File(\n            asset.Path,\n            asset.ContentType,\n            fileDownloadName: asset.FileName,\n            lastModified: new DateTimeOffset(DateTime.SpecifyKind(asset.CreatedAt, DateTimeKind.Utc)),\n            entityTag: new EntityTagHeaderValue($\"\\\"{asset.Sha256}\\\"\"),\n            enableRangeProcessing: true);",
+    "replace": "return Results.Bytes(await File.ReadAllBytesAsync(asset.Path, ct), asset.ContentType, asset.FileName, enableRangeProcessing: true);"
+  },
+  {
+    "id": "M62",
+    "area": "Hardening",
+    "rule": "the audit log can be updated",
+    "file": "src/Lateral.Cms/Persistence/Migrations/20261106151459_Assets.cs",
+    "find": "BEFORE UPDATE ON \\\"AuditLog\\\" BEGIN",
+    "replace": "BEFORE UPDATE ON \\\"AuditLog\\\" WHEN 0 BEGIN"
+  },
+  {
+    "id": "M63",
+    "area": "Hardening",
+    "rule": "disabling an entity is not audited",
+    "file": "src/Lateral.Cms/Entities/EntityAdminService.cs",
+    "find": "db.Audit(now, admin, disabled ? \"entity.disabled\" : \"entity.enabled\", id);",
+    "replace": ""
+  },
+  {
+    "id": "M64",
+    "area": "Hardening",
+    "rule": "the reset is allowed in any environment but Production",
+    "file": "src/Lateral.Cms/Admin/AdminEndpoints.cs",
+    "find": "return string.Equals(options.ResetAllowedEnvironment, environment.EnvironmentName, StringComparison.OrdinalIgnoreCase)",
+    "replace": "return true"
+  },
+  {
+    "id": "M65",
+    "area": "Hardening",
+    "rule": "X-Forwarded-For is believed from anyone",
+    "file": "src/Lateral.Cms/Auth/DevelopmentCredentials.cs",
+    "find": "if (!proxy.Enabled)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M66",
+    "area": "Hardening",
+    "rule": "no limit on batches read into memory at once",
+    "file": "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs",
+    "find": "            .RequireRateLimiting(AcceptLimiter)\n",
+    "replace": ""
+  },
+  {
+    "id": "M67",
+    "area": "Hardening",
+    "rule": "development credentials are generated in every environment",
+    "file": "src/Lateral.Cms/Auth/DevelopmentCredentials.cs",
+    "find": "if (!builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(builder.Configuration[\"Auth:Cms:Username\"]))",
+    "replace": "if (!string.IsNullOrWhiteSpace(builder.Configuration[\"Auth:Cms:Username\"]))"
+  },
+  {
+    "id": "M68",
+    "area": "Hardening",
+    "rule": "the test console starts in any environment",
+    "file": "tools/Lateral.Cms.TestConsole/Program.cs",
+    "find": "if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>($\"{ConsoleOptions.SectionName}:AllowNonDevelopment\"))",
+    "replace": "if (false)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests"
+  },
+  {
+    "id": "M69",
+    "area": "Hardening",
+    "rule": "failed batch bytes are not reported",
+    "file": "src/Lateral.Cms/Ingestion/QueueSupport.cs",
+    "find": ", failed?.Bytes ?? 0);",
+    "replace": ", 0);"
+  },
+  {
+    "id": "M70",
+    "area": "Hardening",
+    "rule": "a connection open cancelled by shutdown is logged as an error",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "if (eventData.Exception is OperationCanceledException\n",
+    "replace": "if (false\n"
+  },
+  {
+    "id": "M71",
+    "area": "Hardening",
+    "rule": "connections are opened in parallel (the pool race returns)",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "        lock (OpenLock)\n        {\n            open();\n        }",
+    "replace": "        open();"
+  },
+  {
+    "id": "M72",
+    "area": "Assets",
+    "rule": "the write gate is held for the whole scan",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "                    result = await scanner.ScanAsync(stream,",
+    "replace": "                    using var held = await gate.AcquireAsync(cancellationToken);\n                    result = await scanner.ScanAsync(stream,"
+  },
+  {
+    "id": "M73",
+    "area": "Photos",
+    "rule": "a refused download is not asked for again",
+    "file": "tools/Lateral.Cms.TestConsole/MediaEndpoints.cs",
+    "find": "if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests || attempt == Attempts)",
+    "replace": "if (true)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests"
+  },
+  {
+    "id": "M74",
+    "area": "Photos",
+    "rule": "every picture is offered as a download",
+    "file": "tools/Lateral.Cms.TestConsole/MediaEndpoints.cs",
+    "find": "if (download is \"1\" or \"true\" && response.Content.Headers.ContentDisposition is { } disposition)",
+    "replace": "if (response.Content.Headers.ContentDisposition is { } disposition)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests"
+  },
+  {
+    "id": "M75",
+    "area": "Photos",
+    "rule": "the console API no longer needs its header (the relaxed check leaks to /api)",
+    "file": "tools/Lateral.Cms.TestConsole/LocalRequestGuard.cs",
+    "find": "Refusal(context.Request, requireHeader: isApi)",
+    "replace": "Refusal(context.Request, requireHeader: false)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests"
   }
 ]

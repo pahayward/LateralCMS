@@ -156,6 +156,7 @@ public class InboxWorkerTests(LiveWorkerFactory factory) : IClassFixture<LiveWor
         host.Dispose();
 
         Assert.Contains(host.Logs.Entries, e => e.Message.Contains("batch worker stopped"));
-        Assert.DoesNotContain(host.Logs.Entries, e => e.Level >= LogLevel.Error);
+        var errors = host.Logs.Entries.Where(e => e.Level >= LogLevel.Error).Select(e => e.Category + ": " + e.Message + " " + e.Exception).ToList();
+        Assert.True(errors.Count == 0, string.Join(Environment.NewLine, errors));
     }
 }

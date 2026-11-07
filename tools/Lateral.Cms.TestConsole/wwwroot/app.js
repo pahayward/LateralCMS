@@ -178,7 +178,7 @@ function fillLogBody(body, entry) {
 }
 
 // ---------------------------------------------------------------- tabs and health
-const views = ['send', 'browse', 'matrix', 'large', 'queue', 'endpoints'];
+const views = ['send', 'browse', 'matrix', 'large', 'assets', 'queue', 'endpoints'];
 
 function showView(name) {
   if (!views.includes(name)) name = 'send';
@@ -756,17 +756,50 @@ const ENDPOINTS = [
     answers: '200; 503' },
 ];
 
+// The asset store: S3-style multipart upload, scanning, and ranged downloads.
+ENDPOINTS.push(
+  { key: 'asset-put', method: 'PUT', path: '/cms/assets/{key}', who: 'CMS account', view: 'assets',
+    what: 'Upload one object (up to the simple limit) in a single request. Streamed to disk and stored in quarantine; it is not served until the scanner clears it.',
+    answers: '202 with the asset id; 400 bad key or checksum; 413 too large; 429 store full; 401; 403' },
+  { key: 'asset-start', method: 'POST', path: '/cms/assets/uploads', who: 'CMS account', view: 'assets',
+    what: 'Start a multipart upload: name, content type and total size. Returns the upload id and the part limits.',
+    answers: '201; 400; 413 too large; 429 store full; 401; 403' },
+  { key: 'asset-part', method: 'PUT', path: '/cms/assets/uploads/{uploadId}/parts/{n}', who: 'CMS account', view: 'assets',
+    what: 'Upload one part. Parts can be sent in parallel and sent again (the last one wins). X-Content-SHA256 is checked.',
+    answers: '200 with the part checksum; 400; 404 unknown or expired upload; 413; 429; 401; 403' },
+  { key: 'asset-complete', method: 'POST', path: '/cms/assets/uploads/{uploadId}/complete', who: 'CMS account', view: 'assets',
+    what: 'List the parts in order. They are assembled, hashed and checked against the declared size, then quarantined for scanning.',
+    answers: '202 with the asset; 400 bad part list or size; 404; 401; 403' },
+  { key: 'asset-abort', method: 'DELETE', path: '/cms/assets/uploads/{uploadId}', who: 'CMS account', view: 'assets',
+    what: 'Abandon an upload and remove its parts.', answers: '204; 404; 401; 403' },
+  { key: 'asset-status', method: 'GET', path: '/cms/assets/{id}', who: 'CMS account, Admin', view: 'assets',
+    what: 'The asset\'s state (quarantined, clean, rejected, failed), checksum and scan verdict. Never the bytes.',
+    answers: '200; 404; 401; 403' },
+  { key: 'asset-get', method: 'GET', path: '/api/assets/{id}', who: 'User, Admin', view: 'assets',
+    what: 'Download a clean asset. Supports Range, If-Range, ETag and If-None-Match, so many ranges can be fetched in parallel and a download resumed. Anything not clean is a 404.',
+    answers: '200; 206 partial; 304; 404; 416 bad range; 429 too many open downloads; 401; 403' },
+  { key: 'asset-delete', method: 'DELETE', path: '/api/assets/{id}', who: 'Admin', view: 'assets',
+    what: 'Hard delete: the row goes and the bytes are overwritten and removed.', answers: '204; 404; 401; 403' },
+  { key: 'asset-list', method: 'GET', path: '/api/admin/assets', who: 'Admin', view: 'assets',
+    what: 'List assets, optionally by state.', answers: '200; 401; 403' },
+  { key: 'asset-rescan', method: 'POST', path: '/api/admin/assets/{id}/rescan', who: 'Admin', view: 'assets',
+    what: 'Put a clean asset back in quarantine for another scan. It is not served until it is cleared again.', answers: '200; 409 not clean; 401; 403' },
+  { key: 'asset-requeue', method: 'POST', path: '/api/admin/assets/{id}/requeue', who: 'Admin', view: 'assets',
+    what: 'Put an asset whose scanning was set aside back in the queue.', answers: '200; 409 not set aside; 401; 403' },
+);
+
 const VIEW_ENDPOINTS = {
   send: ['ingest', 'batch'],
   browse: ['list', 'get', 'disable', 'enable', 'reset'],
   matrix: ['health', 'ingest', 'list', 'get', 'disable'],
   large: ['ingest'],
+  assets: ['asset-put', 'asset-start', 'asset-part', 'asset-complete', 'asset-status', 'asset-get', 'asset-list'],
   queue: ['report', 'requeue'],
   endpoints: [],
 };
 
 const endpointPattern = (path) => new RegExp('^' + path.replace(/[.*+?^$()|[\]\\]/g, '\\$&')
-  .replace('{id}', '[^/]+').replace('{batchId}', '[^/]+') + '$');
+  .replace('{id}', '[^/]+').replace('{batchId}', '[^/]+').replace('{uploadId}', '[^/]+').replace('{key}', '[^/]+').replace('{n}', '[0-9]+') + '$');
 
 function lastCallTo(endpoint) {
   // The background health check is kept out of the request log, so it is tracked on its own.
@@ -1018,7 +1051,7 @@ async function start() {
   if (missing.length) {
     const banner = $('#setup-banner');
     banner.hidden = false;
-    banner.textContent = `No credentials configured for: ${missing.join(', ')}. In Development the console reads them from the CMS's appsettings.Development.json; otherwise set Console:Accounts. Those accounts are disabled below.`;
+    banner.textContent = `No credentials configured for: ${missing.join(', ')}. In Development the console reads them from the CMS's App_Data/dev-credentials.json (the CMS writes it the first time it runs); otherwise set Console:Accounts. Those accounts are disabled below.`;
   }
 
   initSend();

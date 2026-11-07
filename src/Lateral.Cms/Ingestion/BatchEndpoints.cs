@@ -17,6 +17,7 @@ public sealed record QueueReport(
     int PendingEvents,
     double? OldestPendingAgeSeconds,
     int FailedBatches,
+    long FailedBytes,
     long UsedBytes,
     long MaxBytes,
     IReadOnlyList<FailedBatchInfo> Failed);
@@ -67,7 +68,7 @@ public sealed class BatchStatusQueries(CmsReadDbContext db, TimeProvider time, I
             ? Math.Round(Math.Max(0, (time.GetUtcNow().UtcDateTime - oldest).TotalSeconds), 1)
             : (double?)null;
         return new QueueReport(
-            inbox.Value.WorkerEnabled, stats.PendingBatches, stats.PendingEvents, age, stats.FailedBatches, stats.UsedBytes,
+            inbox.Value.WorkerEnabled, stats.PendingBatches, stats.PendingEvents, age, stats.FailedBatches, stats.FailedBytes, stats.UsedBytes,
             inbox.Value.MaxBytes, failed);
     }
 }
@@ -103,6 +104,7 @@ public sealed class QueueAdminService(
         batch.Attempts = 0;
         batch.LastError = null;
         batch.NextAttemptAt = time.GetUtcNow().UtcDateTime;
+        db.Audit(batch.NextAttemptAt, admin, "batch.requeued", batchId.ToString());
         await db.SaveChangesAsync(cancellationToken);
 
         signal.Notify();

@@ -72,7 +72,7 @@ comes from the rebuild brief ([REBUILD-BRIEF](REBUILD-BRIEF.md), section 5); thi
 |---|---|---|---|---|---|---|---|
 | ST-01 | EF Core on SQLite; one migration creates the final schema; applied at startup unless switched off | MUST | I | K15 | Done | - | `StartupValidationTests` (3), `StorageGuaranteeTests` (1) |
 | ST-02 | Separate write and read contexts. The read context is no-tracking, opened read-only (`Mode=ReadOnly`) and throws on `SaveChanges`. The write context is used by ingestion and the admin override only | MUST | I M | - | Done | M10 | `PersistenceGuaranteeTests` (4) |
-| ST-03 | WAL mode; writers serialised by one in-process gate; `synchronous` left at FULL; concurrency token renewed on every save | MUST | I C M | K1 | Done | M11 | `StorageGuaranteeTests` (1) |
+| ST-03 | WAL mode; writers serialised by one in-process gate; `synchronous` left at FULL; concurrency token renewed on every save | MUST | I C M | K1 | Done | M11 | `ConnectionPoolTests` (2), `StorageGuaranteeTests` (1) |
 | ST-04 | All timestamps are UTC and come back with `Kind = Utc` | MUST | U I | - | Done | - | `StorageGuaranteeTests` (1) |
 | ST-05 | The schema enforces what code assumes: the payload `CHECK`, unique (`BatchId`, `Sequence`), unique `BatchId`. A raw-SQL insert that breaks one fails | SHOULD | I | - | Done | - | `AcceptanceTests` (1), `StorageGuaranteeTests` (2) |
 | ST-06 | `secure_delete=ON` on every connection. After a delete (and after a payload is nulled) plus `wal_checkpoint(TRUNCATE)`, a unique marker string is absent from the database file and the WAL | SHOULD | I M | K6 | Done | M13 | `StorageGuaranteeTests` (3) |
@@ -114,7 +114,7 @@ comes from the rebuild brief ([REBUILD-BRIEF](REBUILD-BRIEF.md), section 5); thi
 | OB-02 | The batch id is the `X-Correlation-Id` header, a property of every log line and the key in `Batches` and `Events` | MUST | I L | - | Done | - | `ObservabilityTests` (1) |
 | OB-03 | `Events` is the ledger: a row per event received, rejected ones included, with `ReceivedAt` and `ProcessedAt`; no payload once decided | MUST | I | K6 | Done | - | `IngestionEndpointTests` (1) |
 | OB-04 | Meter `Lateral.Cms` with bounded tags: events processed (outcome, type), queued, apply and accept duration, queue lag, retries, set-asides, and gauges pending, oldest age and failed | SHOULD | I | K12 | Done | - | `ObservabilityTests` (2) |
-| OB-05 | Worker health is visible: a log when a batch is applied (with its wait), a Warning per failed attempt, an Error when a batch is set aside or the worker faults | MUST | L | - | Done | - | `InboxFailureTests` (9), `InboxWorkerTests` (7) |
+| OB-05 | Worker health is visible: a log when a batch is applied (with its wait), a Warning per failed attempt, an Error when a batch is set aside or the worker faults | MUST | L | - | Done | - | `InboxFailureTests` (9), `InboxWorkerTests` (7), `ShutdownTests` (1) |
 | OB-06 | DESIGN lists the alerts an operator needs, including "the CMS has gone quiet" | SHOULD | D | K12 | Done | - | - |
 
 ### Testing and delivery
@@ -143,3 +143,39 @@ comes from the rebuild brief ([REBUILD-BRIEF](REBUILD-BRIEF.md), section 5); thi
 | DV-02 | A fenced test-only reset: off by default, not mapped unless switched on, refused at startup in Production, admin only, exact confirmation body, runs in one transaction, logged with who and counts. It also empties the queue | COULD | I M | K17 | Done | M41 M42 | `AsyncResetTests` (1), `ResetEndpointTests` (7) |
 | DV-03 | A one-click Visual Studio launch profile for the service and the console | COULD | O | - | Copied from the first build; not verified (needs Visual Studio) | - | - |
 | DV-04 | The S3 comparison and the generated diagrams, updated for the new design | COULD | D | - | Not done: the S3 comparison and generated diagrams were not ported | - | - |
+
+### Assets
+
+| ID | Requirement | Pri | Evidence | Limit | Status | Mutations | Tests |
+|---|---|---|---|---|---|---|---|
+| BL-01 | Upload: a single streamed `PUT` up to `Assets:MaxSimpleBytes`; S3-style multipart above it (initiate, parts sent in parallel, each checksummed and replaceable, complete) up to `Assets:MaxObjectBytes`. Every refusal (bad key, checksum, size, part list, expired or unknown upload) stores nothing and leaves no file | MUST | I V M | K1 | Done | M44 M45 M46 | `UploadTests` (18) |
+| BL-02 | Only the CMS account uploads; the CMS and admins see an asset's state; users and admins download; only admins delete, re-scan or requeue. Every asset route has a row in the role matrix | MUST | A | - | Done | - | `RoleMatrixTests` (2) |
+| BL-03 | Downloads stream with `Range` (single, suffix, open-ended; `206`, `416`), `If-Range`, `ETag` (the SHA-256) and `If-None-Match` (`304`), `HEAD`; many ranges can be read in parallel and reassemble to the original hash. Served as an attachment, typed by what the scanner detected, with `nosniff`, a sandbox CSP and `no-store` | MUST | I M | K1 | Done | M47 M48 | `DownloadTests` (9) |
+| BL-04 | Only a **clean** asset is ever served: quarantined, rejected and set-aside assets are the same `404` as a missing one, to users and admins alike | MUST | I M | - | Done | M43 | `ScanPipelineTests` (15) |
+| BL-05 | The store is bounded: a total cap (`429` with `Retry-After`, nothing stored, parts in flight counted), a per-object cap, and a per-caller cap on concurrent downloads | MUST | I C M | K1 | Done | M49 | `DownloadTests` (1), `HousekeepingTests` (2) |
+| BL-06 | Housekeeping: unfinished uploads expire; the sweeper removes expired uploads and files no row accounts for (stray parts, quarantine files, blobs, temp files) and never takes a young file or one that is accounted for | SHOULD | I M | - | Done | M50 | `HousekeepingTests` (3) |
+| BL-07 | Hard delete is physical (best effort): the row goes, the bytes are overwritten with zeros even while a reader has them open, then removed; identical content is stored once and survives until the last asset using it is deleted | MUST | I M | K6 | Done | M51 M52 M53 | `HousekeepingTests` (3) |
+| BL-08 | Large objects are streamed, not held in memory: a 64 MiB asset is uploaded in parallel parts, scanned and downloaded while the process allocates a small fraction of its size | SHOULD | I M | - | Done | M61 | `LargeAssetTests` (1) |
+
+### Content scanner
+
+| ID | Requirement | Pri | Evidence | Limit | Status | Mutations | Tests |
+|---|---|---|---|---|---|---|---|
+| SC-01 | The mock scanner recognises, deterministically and from the bytes: a test signature (and, if switched on, EICAR); executables (disguised or bare); a declared type the bytes contradict; active content in SVG, HTML and PDF; archive bombs read from the directory alone; and simulated scanner failures. It is a stand-in that proves the pipeline, **not** protection | MUST | U M | K19 | Done | M58 M59 M60 | `ScannerTests` (20) |
+| SC-02 | Pipeline: every upload is quarantined, queued, scanned by a background worker and either cleared (moved to its content address) or rejected; the scan runs outside the write gate, so a slow scan never holds up ingestion | MUST | I F | - | Done | - | `ScanPipelineTests` (15) |
+| SC-03 | Fail closed: a scanner error, a timeout or a missing file leaves the asset quarantined and unserved, retries with doubling back-off, and after the maximum sets it aside (still unserved) until an admin requeues it; a requeue never skips the scan | MUST | F I M | - | Done | M54 M55 | `ScanPipelineTests` (4) |
+| SC-04 | A rejected asset's bytes are overwritten and removed from disk; only its verdict, signature, checksum and times remain; assets sharing its content are rejected with it | MUST | I M | K6 | Done | M56 | `ScanPipelineTests` (1) |
+| SC-05 | Assets cleared by an older scanner version can be re-queued, and are not served until cleared again; an admin can re-scan any clean asset | SHOULD | I M | - | Done | M57 | `ScanPipelineTests` (2) |
+| SC-06 | Uploads, verdicts and admin asset actions are recorded in an append-only audit log, in the same transaction as the change, holding no content | MUST | I | K14 | Done | - | `ScanPipelineTests` (1) |
+
+### Security hardening
+
+| ID | Requirement | Pri | Evidence | Limit | Status | Mutations | Tests |
+|---|---|---|---|---|---|---|---|
+| SH-01 | No credential is committed: settings files hold none, and in Development without supplied credentials random ones are generated once into a git-ignored file (never in any other environment, never over supplied ones) | MUST | I M | K4 | Done | M67 | `HardeningTests` (5) |
+| SH-02 | The memory a burst of senders can use is bounded: only `Ingestion:MaxConcurrentAccepts` batches are read at once, a queue absorbs bursts, and overflow gets `429` with `Retry-After` | MUST | I C M | K1 | Done | M66 | `HardeningTests` (2) |
+| SH-03 | The failed-sign-in throttle keys on the real client: `X-Forwarded-For` is believed only from proxies named in configuration, and ignored (so it cannot be forged to dodge the throttle) otherwise; invalid proxy settings stop startup | MUST | I M | K4 | Done | M65 | `HardeningTests` (3) |
+| SH-04 | The test-only reset is an allow-list: it exists in Development, or in another environment only when named on purpose (`Admin:ResetAllowedEnvironment`), and never in Production | MUST | I M | K17 | Done | M64 | `HardeningTests` (2) |
+| SH-05 | Admin actions (disable, enable, requeue, reset, asset delete and re-scan) are audited with who and what, in the same transaction; the audit log cannot be updated or deleted, and a reset keeps it | MUST | I M | K14 | Done | M62 M63 | `HardeningTests` (2), `ScanPipelineTests` (1) |
+| SH-06 | Failed batches cannot quietly fill the queue: their bytes are reported by the admin report, a gauge and the refusal log | SHOULD | I M | - | Done | M69 | `HardeningTests` (1) |
+| SH-07 | The test console, which holds live credentials, refuses to start outside Development unless told to | SHOULD | M | K17 | Done; its tests are in the separate `Lateral.Cms.TestConsole.Tests` project, which does not use requirement ids | M68 | - |

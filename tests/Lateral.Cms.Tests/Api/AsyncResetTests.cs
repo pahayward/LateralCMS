@@ -6,7 +6,7 @@ namespace Lateral.Cms.Tests.Api;
 
 public sealed class AsyncResetFactory : CmsFactory
 {
-    protected override IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [new("Admin:AllowReset", "true")];
+    protected override IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [new("Admin:AllowReset", "true"), new("Admin:ResetAllowedEnvironment", "Testing")];
 }
 
 /// <summary>The reset must take the queue with it, or the worker would restore what the reset just erased.</summary>

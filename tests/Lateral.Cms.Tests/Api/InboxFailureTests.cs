@@ -271,6 +271,7 @@ public class InboxFailureTests(CmsFactory factory) : IClassFixture<CmsFactory>
         var requeue = await Admin.PostAsync($"/api/admin/ingestion/{batchId}/requeue", null);
         Assert.Equal(HttpStatusCode.OK, requeue.StatusCode);
         Assert.Contains(factory.Logs.Entries, e => e.Message.Contains("requeued failed batch") && e.Message.Contains(batchId));
+        Assert.Equal(1, factory.Count($"SELECT COUNT(*) FROM AuditLog WHERE Action = 'batch.requeued' AND Target = '{batchId}' COLLATE NOCASE AND Actor = '{CmsFactory.AdminName}'"));
 
         await factory.DrainAsync();
         Assert.Equal("completed", await factory.StatusNameAsync(batchId));

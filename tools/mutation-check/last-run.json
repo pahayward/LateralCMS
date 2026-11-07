@@ -10,13 +10,14 @@
     "how": "a test failed",
     "failed": [
       "Lateral.Cms.Tests.Domain.ReducerTests.Replaying_a_whole_stream_changes_nothing",
-      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_pinned_counterexample_arrival_order_matters_when_a_higher_version_carries_an_earlier_timestamp",
       "Lateral.Cms.Tests.Domain.ReducerTests.Events_at_or_before_the_tombstone_are_stale_so_a_deleted_entity_cannot_come_back",
+      "Lateral.Cms.Tests.Api.ResetEndpointTests.After_a_reset_events_that_a_tombstone_had_blocked_are_accepted_again",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_pinned_counterexample_arrival_order_matters_when_a_higher_version_carries_an_earlier_timestamp",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Replaying_any_random_stream_a_second_time_changes_nothing",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
-      "Lateral.Cms.Tests.Api.ResetEndpointTests.After_a_reset_events_that_a_tombstone_had_blocked_are_accepted_again",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_late_publish_cannot_resurrect_a_deleted_entity",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says",
       "Lateral.Cms.Tests.Api.AcceptanceTests.A_delete_leaves_no_copy_of_an_earlier_publish_anywhere_once_both_are_applied"
@@ -32,10 +33,11 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
+      "Lateral.Cms.Tests.Domain.ReducerTests.An_unpublish_beats_a_publish_at_the_same_version_and_instant_in_either_arrival_order",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
-      "Lateral.Cms.Tests.Domain.ReducerTests.An_unpublish_beats_a_publish_at_the_same_version_and_instant_in_either_arrival_order",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says"
     ]
   },
@@ -54,12 +56,13 @@
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_second_pinned_limit_an_id_reused_with_restarting_versions_depends_on_arrival_order",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
       "Lateral.Cms.Tests.Api.ObservabilityTests.Applied_and_duplicate_are_information_while_stale_unsupported_rejected_and_conflict_winners_are_warnings",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Concurrent_batches_for_one_entity_converge_on_the_newest_version",
-      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_late_older_version_does_not_overwrite_a_newer_one",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Events_arriving_in_reverse_order_give_the_same_result_as_in_order",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_stale_event_reports_the_checksum_of_what_it_carried_not_of_what_is_stored",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Events_arriving_in_reverse_order_give_the_same_result_as_in_order",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Replaying_a_batch_is_harmless",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Reordering_batches_cannot_change_the_outcome_a_late_publish_cannot_undo_an_earlier_takedown"
@@ -75,13 +78,14 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Domain.ReducerTests.Contradicting_content_at_the_same_version_instant_and_kind_is_decided_by_the_greater_text_not_by_arrival",
-      "Lateral.Cms.Tests.Domain.ReducerTests.Contradicting_unpublishes_are_decided_the_same_way",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Contradicting_content_at_one_version_and_instant_resolves_the_same_way_in_either_order",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_content_conflict_logs_at_warning_for_winner_and_loser_whichever_arrived_first",
+      "Lateral.Cms.Tests.Domain.ReducerTests.Contradicting_content_at_the_same_version_instant_and_kind_is_decided_by_the_greater_text_not_by_arrival",
+      "Lateral.Cms.Tests.Domain.ReducerTests.Contradicting_unpublishes_are_decided_the_same_way",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says"
     ]
   },
@@ -98,6 +102,7 @@
       "Lateral.Cms.Tests.Domain.ReducerTests.A_delete_older_than_the_stored_state_is_stale_but_still_raises_the_tombstone",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says"
     ]
@@ -125,10 +130,10 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Ingestion.EventParserTests.The_checksum_is_computed_over_the_canonical_payload_text_that_is_stored",
-      "Lateral.Cms.Tests.Api.Md5ChecksumTests.The_configured_md5_checksum_is_returned_stored_and_served",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Publishing_returns_the_checksum_of_the_payload_that_was_stored",
+      "Lateral.Cms.Tests.Api.Md5ChecksumTests.The_configured_md5_checksum_is_returned_stored_and_served",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_consumer_can_verify_the_payload_it_was_served_against_the_checksum",
+      "Lateral.Cms.Tests.Ingestion.EventParserTests.The_checksum_is_computed_over_the_canonical_payload_text_that_is_stored",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Unpublish_events_are_checksummed_and_stored_too",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Every_stored_payload_matches_its_stored_checksum",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Contradicting_content_at_one_version_and_instant_resolves_the_same_way_in_either_order",
@@ -254,74 +259,74 @@
     "failed": [
       "Lateral.Cms.Tests.Api.InboxBackpressureTests.Applying_batches_frees_the_space_they_used",
       "Lateral.Cms.Tests.Api.Md5ChecksumTests.The_configured_md5_checksum_is_returned_stored_and_served",
-      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.The_read_context_tracks_nothing",
-      "Lateral.Cms.Tests.Api.RouteAndTransportTests.An_attempt_to_change_or_remove_an_entity_through_the_api_is_refused_even_for_an_admin",
+      "Lateral.Cms.Tests.Api.ResetEndpointTests.Without_the_exact_confirmation_nothing_is_erased",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Publishing_returns_the_checksum_of_the_payload_that_was_stored",
-      "Lateral.Cms.Tests.Api.InboxBackpressureTests.A_full_inbox_refuses_with_429_and_stores_nothing_of_the_refused_batch",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Ids_with_awkward_characters_round_trip",
       "Lateral.Cms.Tests.Api.EntityPagingTests.The_final_page_has_no_next_cursor",
-      "Lateral.Cms.Tests.Api.ResetEndpointTests.Without_the_exact_confirmation_nothing_is_erased",
-      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
+      "Lateral.Cms.Tests.Api.InboxBackpressureTests.A_full_inbox_refuses_with_429_and_stores_nothing_of_the_refused_batch",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Applied_events_are_logged_with_their_checksum_but_never_their_payload",
-      "Lateral.Cms.Tests.Api.InboxBackpressureTests.Senders_arriving_together_cannot_squeeze_past_the_limit",
       "Lateral.Cms.Tests.Api.EntityPagingTests.The_default_page_size_applies_and_oversized_or_tiny_limits_are_clamped",
+      "Lateral.Cms.Tests.Api.InboxBackpressureTests.Senders_arriving_together_cannot_squeeze_past_the_limit",
       "Lateral.Cms.Tests.Api.InboxBackpressureTests.Once_the_worker_has_made_room_the_same_batch_is_accepted",
-      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_delete_and_re_create_in_separate_batches_also_clears_the_override",
-      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.A_save_based_on_a_stale_read_is_refused",
-      "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_consumer_can_verify_the_payload_it_was_served_against_the_checksum",
       "Lateral.Cms.Tests.Api.InboxFailureTests.The_wait_between_attempts_doubles_up_to_a_ceiling",
       "Lateral.Cms.Tests.Api.EntityPagingTests.Pages_follow_the_cursor_in_stable_id_order_without_gaps_or_repeats",
-      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.Every_save_renews_the_concurrency_token",
-      "Lateral.Cms.Tests.Auth.RoleMatrixTests.Each_caller_gets_exactly_the_access_its_role_allows",
+      "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_consumer_can_verify_the_payload_it_was_served_against_the_checksum",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.The_same_checksum_is_served_by_the_api_to_users_and_admins_and_in_listings",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Status_fields_are_only_shown_to_admins",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Entities_cannot_be_changed_or_deleted_through_the_api_by_anyone",
       "Lateral.Cms.Tests.Api.InboxFailureTests.An_admin_sees_the_failed_batch_and_can_requeue_it_once_the_fault_is_fixed",
       "Lateral.Cms.Tests.Api.ResetEndpointTests.Only_an_admin_may_reset_and_the_data_survives_anyone_else",
-      "Lateral.Cms.Tests.Api.IngestionLimitsTests.An_oversized_payload_rejects_that_event_only",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Concurrent_batches_for_one_entity_converge_on_the_newest_version",
+      "Lateral.Cms.Tests.Auth.RoleMatrixTests.Each_caller_gets_exactly_the_access_its_role_allows",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Status_fields_are_only_shown_to_admins",
       "Lateral.Cms.Tests.Api.ResetDisabledByDefaultTests.Data_is_untouched_by_the_attempt",
-      "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_that_keeps_failing_is_set_aside_and_does_not_hold_up_the_ones_behind_it",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_twice_is_idempotent_and_keeps_the_original_audit_fields",
-      "Lateral.Cms.Tests.Persistence.StorageGuaranteeTests.Every_timestamp_comes_back_as_utc",
-      "Lateral.Cms.Tests.Api.AsyncResetTests.A_reset_empties_the_queue_so_nothing_comes_back_afterwards",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Concurrent_batches_for_one_entity_converge_on_the_newest_version",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.An_update_changes_the_checksum_and_a_replay_returns_the_same_one",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Skipped_versions_are_fine_because_unpublished_edits_are_never_sent",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Admin_actions_are_logged_with_who_and_what",
+      "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_that_keeps_failing_is_set_aside_and_does_not_hold_up_the_ones_behind_it",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Entities_cannot_be_changed_or_deleted_through_the_api_by_anyone",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Unpublish_events_are_checksummed_and_stored_too",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Skipped_versions_are_fine_because_unpublished_edits_are_never_sent",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_published_entity_becomes_visible_to_users",
-      "Lateral.Cms.Tests.Api.ResetEndpointTests.After_a_reset_events_that_a_tombstone_had_blocked_are_accepted_again",
-      "Lateral.Cms.Tests.Persistence.StorageGuaranteeTests.After_a_delete_and_a_checkpoint_the_deleted_entitys_content_is_in_neither_the_file_nor_the_wal",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Users_see_only_published_and_not_disabled_entities_while_admins_see_everything",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Several_versions_of_one_entity_in_one_batch_are_folded_in_order",
-      "Lateral.Cms.Tests.Api.ObservabilityTests.The_meter_counts_events_by_outcome_and_type_and_an_unknown_type_cannot_create_a_new_series",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Every_stored_payload_matches_its_stored_checksum",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_leaves_the_cms_data_untouched",
+      "Lateral.Cms.Tests.Api.ResetEndpointTests.After_a_reset_events_that_a_tombstone_had_blocked_are_accepted_again",
+      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.The_read_context_tracks_nothing",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Several_versions_of_one_entity_in_one_batch_are_folded_in_order",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_twice_is_idempotent_and_keeps_the_original_audit_fields",
+      "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Contradicting_content_at_one_version_and_instant_resolves_the_same_way_in_either_order",
+      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.A_save_based_on_a_stale_read_is_refused",
       "Lateral.Cms.Tests.Api.ResetEndpointTests.An_admin_with_the_confirmation_erases_entities_tombstones_and_the_ledger",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Admin_actions_are_logged_with_who_and_what",
       "Lateral.Cms.Tests.Api.InboxFailureTests.A_failed_attempt_applies_nothing_keeps_the_batch_and_waits_before_trying_again",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_delete_keeps_no_entity_data_only_a_tombstone",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_hides_an_entity_from_users_and_enabling_brings_it_back",
-      "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Contradicting_content_at_one_version_and_instant_resolves_the_same_way_in_either_order",
-      "Lateral.Cms.Tests.Api.ObservabilityTests.Applied_and_duplicate_are_information_while_stale_unsupported_rejected_and_conflict_winners_are_warnings",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Payloads_are_returned_as_the_same_data_that_was_sent_with_html_neutralised_in_transit",
-      "Lateral.Cms.Tests.Api.ObservabilityTests.Every_event_is_logged_once_with_its_batch_index_id_type_version_outcome_reason_and_checksum",
-      "Lateral.Cms.Tests.Api.ObservabilityTests.The_batch_id_is_the_response_header_the_body_every_log_line_and_the_rows",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Publishing_again_after_an_unpublish_makes_the_entity_visible_again",
+      "Lateral.Cms.Tests.Persistence.PersistenceGuaranteeTests.Every_save_renews_the_concurrency_token",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Users_see_only_published_and_not_disabled_entities_while_admins_see_everything",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_content_conflict_logs_at_warning_for_winner_and_loser_whichever_arrived_first",
-      "Lateral.Cms.Tests.Api.ObservabilityTests.The_queue_gauges_report_pending_batches_their_age_and_failures_from_the_backlog_the_worker_refreshes",
-      "Lateral.Cms.Tests.Api.InboxFailureTests.The_report_shows_how_much_is_waiting_and_for_how_long",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_late_older_version_does_not_overwrite_a_newer_one",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Payloads_are_returned_as_the_same_data_that_was_sent_with_html_neutralised_in_transit",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_leaves_the_cms_data_untouched",
+      "Lateral.Cms.Tests.Persistence.StorageGuaranteeTests.Every_timestamp_comes_back_as_utc",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_hides_an_entity_from_users_and_enabling_brings_it_back",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.A_stale_event_reports_the_checksum_of_what_it_carried_not_of_what_is_stored",
+      "Lateral.Cms.Tests.Api.InboxFailureTests.The_report_shows_how_much_is_waiting_and_for_how_long",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.Publishing_again_after_an_unpublish_makes_the_entity_visible_again",
+      "Lateral.Cms.Tests.Persistence.StorageGuaranteeTests.After_a_delete_and_a_checkpoint_the_deleted_entitys_content_is_in_neither_the_file_nor_the_wal",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_late_older_version_does_not_overwrite_a_newer_one",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Every_event_leaves_a_ledger_row_whatever_its_outcome_and_never_the_payload",
+      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
+      "Lateral.Cms.Tests.Api.IngestionLimitsTests.An_oversized_payload_rejects_that_event_only",
+      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_delete_and_re_create_in_separate_batches_also_clears_the_override",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_late_publish_cannot_resurrect_a_deleted_entity",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_of_a_version_we_never_saw_published_still_stores_the_entity",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.An_update_replaces_the_payload_and_tracks_the_latest_version",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Events_arriving_in_reverse_order_give_the_same_result_as_in_order",
+      "Lateral.Cms.Tests.Api.ObservabilityTests.The_meter_counts_events_by_outcome_and_type_and_an_unknown_type_cannot_create_a_new_series",
       "Lateral.Cms.Tests.Api.InboxFailureTests.Applying_the_state_the_outcomes_and_completing_the_batch_succeed_or_fail_together",
+      "Lateral.Cms.Tests.Api.RouteAndTransportTests.An_attempt_to_change_or_remove_an_entity_through_the_api_is_refused_even_for_an_admin",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_of_a_newer_version_than_stored_updates_the_stored_data_to_that_version",
+      "Lateral.Cms.Tests.Api.AsyncResetTests.A_reset_empties_the_queue_so_nothing_comes_back_afterwards",
+      "Lateral.Cms.Tests.Api.ObservabilityTests.Applied_and_duplicate_are_information_while_stale_unsupported_rejected_and_conflict_winners_are_warnings",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_cms_publish_cannot_undo_an_admin_disable",
+      "Lateral.Cms.Tests.Api.ObservabilityTests.Every_event_is_logged_once_with_its_batch_index_id_type_version_outcome_reason_and_checksum",
       "Lateral.Cms.Tests.Api.InboxFailureTests.Queue_age_and_lag_are_measured_so_a_backlog_cannot_grow_unseen",
+      "Lateral.Cms.Tests.Api.ObservabilityTests.The_batch_id_is_the_response_header_the_body_every_log_line_and_the_rows",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_publish_after_the_delete_creates_the_entity_again",
+      "Lateral.Cms.Tests.Api.ObservabilityTests.The_queue_gauges_report_pending_batches_their_age_and_failures_from_the_backlog_the_worker_refreshes",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unknown_event_types_are_ignored_and_do_not_fail_the_batch",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Processed_and_failing_events_are_logged_without_leaking_payloads_or_credentials",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Invalid_events_are_reported_while_valid_ones_in_the_same_batch_are_applied",
@@ -329,6 +334,8 @@
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.When_storing_a_batch_fails_nothing_from_it_is_kept_and_the_sender_is_told_to_retry",
       "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_holding_a_takedown_is_never_set_aside_it_keeps_retrying_at_the_longest_delay_until_it_succeeds",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_hides_the_entity_from_users_but_keeps_it_for_admins",
+      "Lateral.Cms.Tests.Api.HardeningTests.A_reset_is_audited_and_never_erases_the_audit_log",
+      "Lateral.Cms.Tests.Api.HardeningTests.Disabling_and_enabling_an_entity_are_audited_once_each_with_the_admins_name_and_repeats_add_nothing",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Events_that_can_never_be_applied_are_decided_on_arrival_and_the_rest_are_queued",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Accepting_and_applying_log_the_events_but_never_their_content_or_credentials",
@@ -377,6 +384,7 @@
       "Lateral.Cms.Tests.Api.InboxFailureTests.An_admin_sees_the_failed_batch_and_can_requeue_it_once_the_fault_is_fixed",
       "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_that_keeps_failing_is_set_aside_and_does_not_hold_up_the_ones_behind_it",
       "Lateral.Cms.Tests.Api.InboxFailureTests.A_failed_attempt_applies_nothing_keeps_the_batch_and_waits_before_trying_again",
+      "Lateral.Cms.Tests.Api.HardeningTests.The_failed_bytes_are_reported_so_set_aside_batches_cannot_quietly_fill_the_queue",
       "Lateral.Cms.Tests.Api.InboxWorkerTests.A_batch_the_worker_cannot_apply_is_set_aside_and_the_worker_carries_on"
     ]
   },
@@ -421,7 +429,8 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Api.InboxBackpressureTests.Senders_arriving_together_cannot_squeeze_past_the_limit"
+      "Lateral.Cms.Tests.Api.InboxBackpressureTests.Senders_arriving_together_cannot_squeeze_past_the_limit",
+      "Lateral.Cms.Tests.Api.HardeningTests.Only_as_many_batches_are_read_into_memory_at_once_as_configured_and_the_rest_get_429_with_retry_after"
     ]
   },
   {
@@ -447,9 +456,9 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Persistence.InboxIndexTests.Picking_the_next_batch_walks_the_pick_index_in_order_without_a_sort",
+      "Lateral.Cms.Tests.Api.InboxWorkerTests.A_batch_the_worker_cannot_apply_is_set_aside_and_the_worker_carries_on",
       "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_that_keeps_failing_is_set_aside_and_does_not_hold_up_the_ones_behind_it",
-      "Lateral.Cms.Tests.Api.InboxWorkerTests.A_batch_the_worker_cannot_apply_is_set_aside_and_the_worker_carries_on"
+      "Lateral.Cms.Tests.Persistence.InboxIndexTests.Picking_the_next_batch_walks_the_pick_index_in_order_without_a_sort"
     ]
   },
   {
@@ -503,6 +512,7 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
+      "Lateral.Cms.Tests.Assets.UploadTests.The_status_endpoint_reports_state_and_never_the_bytes",
       "Lateral.Cms.Tests.Auth.RoleMatrixTests.Each_caller_gets_exactly_the_access_its_role_allows"
     ]
   },
@@ -557,11 +567,12 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
+      "Lateral.Cms.Tests.Domain.ReducerTests.Events_at_or_before_the_tombstone_are_stale_so_a_deleted_entity_cannot_come_back",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Replaying_any_random_stream_a_second_time_changes_nothing",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
-      "Lateral.Cms.Tests.Domain.ReducerTests.Events_at_or_before_the_tombstone_are_stale_so_a_deleted_entity_cannot_come_back",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says"
     ]
   },
@@ -577,6 +588,7 @@
     "failed": [
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state"
     ]
   },
@@ -590,9 +602,9 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
       "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Users_see_only_published_and_not_disabled_entities_while_admins_see_everything",
       "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Disabling_hides_an_entity_from_users_and_enabling_brings_it_back",
+      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_cms_publish_cannot_undo_an_admin_disable"
     ]
   },
@@ -607,10 +619,10 @@
     "how": "a test failed",
     "failed": [
       "Lateral.Cms.Tests.Api.EntitiesEndpointTests.A_query_string_cannot_widen_what_a_user_can_see",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Users_see_only_published_and_not_disabled_entities_while_admins_see_everything",
-      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Hidden_entities_look_exactly_like_missing_ones_to_users",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Publishing_again_after_an_unpublish_makes_the_entity_visible_again",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_of_a_version_we_never_saw_published_still_stores_the_entity",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Users_see_only_published_and_not_disabled_entities_while_admins_see_everything",
+      "Lateral.Cms.Tests.Api.EntitiesEndpointTests.Hidden_entities_look_exactly_like_missing_ones_to_users",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_hides_the_entity_from_users_but_keeps_it_for_admins",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Reordering_batches_cannot_change_the_outcome_a_late_publish_cannot_undo_an_earlier_takedown"
     ]
@@ -642,13 +654,15 @@
       "Lateral.Cms.Tests.Domain.ReducerTests.An_unpublish_beats_a_publish_at_the_same_version_and_instant_in_either_arrival_order",
       "Lateral.Cms.Tests.Domain.ReducerTests.An_unpublish_for_an_id_never_seen_creates_it_unpublished_from_the_events_payload",
       "Lateral.Cms.Tests.Domain.ReducerTests.Contradicting_unpublishes_are_decided_the_same_way",
+      "Lateral.Cms.Tests.Api.InboxFailureTests.The_wait_between_attempts_doubles_up_to_a_ceiling",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Replaying_any_random_stream_a_second_time_changes_nothing",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
+      "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_holding_a_takedown_is_never_set_aside_it_keeps_retrying_at_the_longest_delay_until_it_succeeds",
       "Lateral.Cms.Tests.Api.ChecksumEndpointTests.Unpublish_events_are_checksummed_and_stored_too",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Unpublish_of_a_version_we_never_saw_published_still_stores_the_entity",
-      "Lateral.Cms.Tests.Api.InboxFailureTests.A_batch_holding_a_takedown_is_never_set_aside_it_keeps_retrying_at_the_longest_delay_until_it_succeeds",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Events_arriving_in_reverse_order_give_the_same_result_as_in_order",
       "Lateral.Cms.Tests.Api.InboxWorkerTests.Batches_accepted_before_a_restart_are_applied_after_it",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says",
@@ -670,14 +684,15 @@
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_second_pinned_limit_an_id_reused_with_restarting_versions_depends_on_arrival_order",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_shuffle_of_twenty_thousand_random_timelines_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Every_arrival_order_of_each_curated_timeline_ends_in_the_same_state",
+      "Lateral.Cms.Tests.Domain.ReducerPropertyTests.The_slow_category_one_shuffle_of_each_of_a_million_random_timelines_also_ends_where_the_oracle_says",
       "Lateral.Cms.Tests.Domain.ReducerPropertyTests.Splitting_a_stream_into_chunks_and_applying_the_chunks_in_any_order_gives_the_same_state",
+      "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_delete_keeps_no_entity_data_only_a_tombstone",
+      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
+      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_delete_and_re_create_in_separate_batches_also_clears_the_override",
       "Lateral.Cms.Tests.Domain.ReducerTests.A_publish_after_the_delete_recreates_the_entity_with_the_admin_override_cleared",
       "Lateral.Cms.Tests.Domain.ReducerTests.Events_at_or_before_the_tombstone_are_stale_so_a_deleted_entity_cannot_come_back",
       "Lateral.Cms.Tests.Domain.ReducerTests.A_delete_removes_the_entity_and_leaves_a_payload_free_tombstone",
       "Lateral.Cms.Tests.Persistence.StorageGuaranteeTests.After_a_delete_and_a_checkpoint_the_deleted_entitys_content_is_in_neither_the_file_nor_the_wal",
-      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_publish_never_clears_the_admin_override_but_a_delete_and_re_create_in_one_batch_does",
-      "Lateral.Cms.Tests.Api.IngestionEndpointTests.A_delete_keeps_no_entity_data_only_a_tombstone",
-      "Lateral.Cms.Tests.Api.OverrideAndPolicyTests.A_delete_and_re_create_in_separate_batches_also_clears_the_override",
       "Lateral.Cms.Tests.Api.ResetEndpointTests.An_admin_with_the_confirmation_erases_entities_tombstones_and_the_ledger",
       "Lateral.Cms.Tests.Api.IngestionEndpointTests.Delete_removes_the_entity_for_everyone_including_admins",
       "Lateral.Cms.Tests.Api.AcceptanceTests.Random_streams_split_into_batches_and_applied_in_the_queues_own_order_end_where_the_oracle_says"
@@ -736,7 +751,8 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Api.ResetEndpointTests.Without_the_exact_confirmation_nothing_is_erased"
+      "Lateral.Cms.Tests.Api.ResetEndpointTests.Without_the_exact_confirmation_nothing_is_erased",
+      "Lateral.Cms.Tests.Api.HardeningTests.The_reset_is_allowed_in_development_or_in_an_environment_named_on_purpose"
     ]
   },
   {
@@ -749,11 +765,465 @@
     "outcome": "killed",
     "how": "a test failed",
     "failed": [
-      "Lateral.Cms.Tests.Api.RouteAndTransportTests.No_route_updates_replaces_or_deletes_an_entity_the_only_writes_are_ingestion_the_admin_override_and_the_queue",
       "Lateral.Cms.Tests.Api.ResetDisabledByDefaultTests.An_admin_gets_404_because_the_route_is_not_mapped",
       "Lateral.Cms.Tests.Api.ResetDisabledByDefaultTests.The_route_is_absent_from_the_endpoint_table",
       "Lateral.Cms.Tests.Api.ResetDisabledByDefaultTests.Data_is_untouched_by_the_attempt",
+      "Lateral.Cms.Tests.Api.RouteAndTransportTests.No_route_updates_replaces_or_deletes_an_entity_the_only_writes_are_ingestion_the_admin_override_and_the_queue",
       "Lateral.Cms.Tests.Auth.RoleMatrixTests.The_matrix_covers_every_mapped_endpoint"
+    ]
+  },
+  {
+    "id": "M43",
+    "area": "Assets",
+    "rule": "serve an asset that is not clean",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "reader.Assets.Where(a => a.Id == id && a.State == AssetState.Clean)",
+    "replace": "reader.Assets.Where(a => a.Id == id)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.An_admin_can_re_scan_one_clean_asset_and_not_one_that_is_not_clean",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Assets_cleared_by_an_older_scanner_version_can_be_re_queued_and_are_not_served_until_cleared_again"
+    ]
+  },
+  {
+    "id": "M44",
+    "area": "Assets",
+    "rule": "skip the checksum check on uploads",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (expected is not null && !string.Equals(expected.Trim(), actual, StringComparison.OrdinalIgnoreCase))",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.UploadTests.A_matching_sha256_header_is_accepted_and_a_wrong_one_stores_nothing",
+      "Lateral.Cms.Tests.Assets.UploadTests.A_part_with_a_wrong_checksum_header_is_refused_and_forgotten"
+    ]
+  },
+  {
+    "id": "M45",
+    "area": "Assets",
+    "rule": "do not check the assembled size against the declared size",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (total != upload.DeclaredSize)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.UploadTests.Completing_with_a_bad_part_list_is_refused_and_assembles_nothing"
+    ]
+  },
+  {
+    "id": "M46",
+    "area": "Assets",
+    "rule": "allow a part below the minimum that is not the last",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (i < listed.Count - 1 && row.Size < Settings.MinPartBytes)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.UploadTests.Completing_with_a_bad_part_list_is_refused_and_assembles_nothing"
+    ]
+  },
+  {
+    "id": "M47",
+    "area": "Assets",
+    "rule": "no range support on downloads",
+    "file": "src/Lateral.Cms/Assets/AssetEndpoints.cs",
+    "find": "enableRangeProcessing: true);",
+    "replace": "enableRangeProcessing: false);",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.DownloadTests.Eight_parallel_ranged_downloads_reassemble_to_exactly_the_original_bytes",
+      "Lateral.Cms.Tests.Assets.DownloadTests.The_etag_makes_repeat_downloads_free_and_if_range_makes_resuming_safe",
+      "Lateral.Cms.Tests.Assets.DownloadTests.A_byte_range_returns_exactly_those_bytes_with_206_and_a_content_range",
+      "Lateral.Cms.Tests.Assets.DownloadTests.A_download_is_an_attachment_typed_by_what_the_bytes_are_never_by_what_the_sender_claimed",
+      "Lateral.Cms.Tests.Assets.DownloadTests.A_range_outside_the_object_is_416_and_says_how_big_the_object_is"
+    ]
+  },
+  {
+    "id": "M48",
+    "area": "Assets",
+    "rule": "serve the type the sender claimed instead of the detected one",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "row.DetectedType ?? \"application/octet-stream\"",
+    "replace": "row.ContentType",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.DownloadTests.A_download_is_an_attachment_typed_by_what_the_bytes_are_never_by_what_the_sender_claimed"
+    ]
+  },
+  {
+    "id": "M49",
+    "area": "Assets",
+    "rule": "store size cap not enforced before an upload starts",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "if (await UsedBytesAsync(cancellationToken) + incoming > Settings.MaxBytes)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.Past_the_store_cap_uploads_get_429_with_retry_after_and_nothing_is_stored",
+      "Lateral.Cms.Tests.Api.InboxWorkerTests.Stopping_the_app_stops_the_worker_cleanly_with_no_errors",
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.An_unfinished_upload_expires_and_the_sweeper_removes_its_parts_from_disk_and_database",
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.Identical_content_is_stored_once_and_survives_until_the_last_asset_that_uses_it_is_deleted"
+    ]
+  },
+  {
+    "id": "M50",
+    "area": "Assets",
+    "rule": "the sweeper takes files that are still young",
+    "file": "src/Lateral.Cms/Assets/AssetWorkers.cs",
+    "find": "foreach (var file in store.Files(AssetArea.Quarantine).Where(f => f.LastWriteTimeUtc < oldest).ToList())",
+    "replace": "foreach (var file in store.Files(AssetArea.Quarantine).ToList())",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.The_sweeper_leaves_young_files_alone_so_it_cannot_take_one_that_is_still_being_registered"
+    ]
+  },
+  {
+    "id": "M51",
+    "area": "Assets",
+    "rule": "a delete leaves the content on disk",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "wipe = shared ? null : store.BlobPath(asset.Sha256);",
+    "replace": "wipe = null;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.An_admin_delete_removes_the_row_and_wipes_the_bytes_and_a_user_cannot",
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.Identical_content_is_stored_once_and_survives_until_the_last_asset_that_uses_it_is_deleted"
+    ]
+  },
+  {
+    "id": "M52",
+    "area": "Assets",
+    "rule": "a delete removes content another asset still uses",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "var shared = await db.Assets.AnyAsync(a => a.Sha256 == asset.Sha256 && a.State != AssetState.Rejected && a.Id != id, cancellationToken);",
+    "replace": "var shared = false;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.Identical_content_is_stored_once_and_survives_until_the_last_asset_that_uses_it_is_deleted"
+    ]
+  },
+  {
+    "id": "M53",
+    "area": "Assets",
+    "rule": "the wipe does not overwrite before deleting",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "await file.WriteAsync(zeros.AsMemory(0, (int)Math.Min(zeros.Length, file.Length - written)), cancellationToken);",
+    "replace": "await Task.CompletedTask;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.HousekeepingTests.Deleted_content_is_overwritten_with_zeros_even_while_someone_has_the_file_open"
+    ]
+  },
+  {
+    "id": "M54",
+    "area": "Scanner",
+    "rule": "a scanner exception is treated as clean",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "failure = ex.GetType().Name;",
+    "replace": "result = new ScanResult(ScanVerdict.Clean, null, null, \"x\", \"x\");",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.A_scanner_error_keeps_the_asset_quarantined_retries_with_back_off_and_sets_it_aside_without_ever_serving_it",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Assets_cleared_by_an_older_scanner_version_can_be_re_queued_and_are_not_served_until_cleared_again",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.An_admin_can_requeue_a_set_aside_asset_and_only_a_set_aside_one"
+    ]
+  },
+  {
+    "id": "M55",
+    "area": "Scanner",
+    "rule": "a scan that keeps failing is never set aside",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "var final = asset.Attempts >= settings.ScanMaxAttempts;",
+    "replace": "var final = false;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.A_scanner_error_keeps_the_asset_quarantined_retries_with_back_off_and_sets_it_aside_without_ever_serving_it",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.An_admin_can_requeue_a_set_aside_asset_and_only_a_set_aside_one"
+    ]
+  },
+  {
+    "id": "M56",
+    "area": "Scanner",
+    "rule": "a rejected asset keeps its quarantined bytes",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "await store.WipeAsync(quarantine, cancellationToken);\n            if (!await store.WipeAsync(store.BlobPath(asset.Sha256), cancellationToken))",
+    "replace": "if (!await store.WipeAsync(store.BlobPath(asset.Sha256), cancellationToken))",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.A_flagged_asset_is_rejected_its_bytes_are_wiped_from_disk_and_only_the_verdict_remains",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Executables_are_rejected_with_the_rule_that_caught_them"
+    ]
+  },
+  {
+    "id": "M57",
+    "area": "Scanner",
+    "rule": "re-scanning outdated assets leaves them served meanwhile",
+    "file": "src/Lateral.Cms/Assets/AssetService.cs",
+    "find": "s => s.SetProperty(a => a.State, AssetState.Quarantined).SetProperty(a => a.Attempts, 0).SetProperty(a => a.NextAttemptAt, now),",
+    "replace": "s => s.SetProperty(a => a.State, AssetState.Clean).SetProperty(a => a.Attempts, 0).SetProperty(a => a.NextAttemptAt, now),",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Assets_cleared_by_an_older_scanner_version_can_be_re_queued_and_are_not_served_until_cleared_again"
+    ]
+  },
+  {
+    "id": "M58",
+    "area": "Scanner",
+    "rule": "active content in svg, html and pdf is not flagged",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": "if (found?.Hit == Hit.ActiveContent)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScannerTests.Script_in_svg_or_html_is_suspicious",
+      "Lateral.Cms.Tests.Assets.ScannerTests.Script_or_launch_actions_in_a_pdf_are_suspicious"
+    ]
+  },
+  {
+    "id": "M59",
+    "area": "Scanner",
+    "rule": "archive compression ratio is not checked",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": " || (compressed > 0 && expanded / compressed > settings.MaxCompressionRatio)",
+    "replace": "",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScannerTests.An_archive_that_declares_a_huge_expansion_is_a_bomb_judged_from_its_directory_alone"
+    ]
+  },
+  {
+    "id": "M60",
+    "area": "Scanner",
+    "rule": "an executable dressed as another type passes",
+    "file": "src/Lateral.Cms/Assets/MockAssetScanner.cs",
+    "find": "if (!claimsExecutable)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScannerTests.An_executable_dressed_up_as_an_image_is_suspicious",
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Executables_are_rejected_with_the_rule_that_caught_them"
+    ]
+  },
+  {
+    "id": "M61",
+    "area": "Assets",
+    "rule": "downloads are buffered whole in memory",
+    "file": "src/Lateral.Cms/Assets/AssetEndpoints.cs",
+    "find": "return Results.File(\n            asset.Path,\n            asset.ContentType,\n            fileDownloadName: asset.FileName,\n            lastModified: new DateTimeOffset(DateTime.SpecifyKind(asset.CreatedAt, DateTimeKind.Utc)),\n            entityTag: new EntityTagHeaderValue($\"\\\"{asset.Sha256}\\\"\"),\n            enableRangeProcessing: true);",
+    "replace": "return Results.Bytes(await File.ReadAllBytesAsync(asset.Path, ct), asset.ContentType, asset.FileName, enableRangeProcessing: true);",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.DownloadTests.The_etag_makes_repeat_downloads_free_and_if_range_makes_resuming_safe",
+      "Lateral.Cms.Tests.Assets.DownloadTests.A_download_is_an_attachment_typed_by_what_the_bytes_are_never_by_what_the_sender_claimed",
+      "Lateral.Cms.Tests.Assets.LargeAssetTests.A_64_MiB_asset_is_uploaded_in_parallel_parts_scanned_and_downloaded_without_holding_it_in_memory"
+    ]
+  },
+  {
+    "id": "M62",
+    "area": "Hardening",
+    "rule": "the audit log can be updated",
+    "file": "src/Lateral.Cms/Persistence/Migrations/20261106151459_Assets.cs",
+    "find": "BEFORE UPDATE ON \\\"AuditLog\\\" BEGIN",
+    "replace": "BEFORE UPDATE ON \\\"AuditLog\\\" WHEN 0 BEGIN",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.Uploads_verdicts_and_admin_actions_are_written_to_an_audit_log_that_cannot_be_edited"
+    ]
+  },
+  {
+    "id": "M63",
+    "area": "Hardening",
+    "rule": "disabling an entity is not audited",
+    "file": "src/Lateral.Cms/Entities/EntityAdminService.cs",
+    "find": "db.Audit(now, admin, disabled ? \"entity.disabled\" : \"entity.enabled\", id);",
+    "replace": "",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.HardeningTests.A_reset_is_audited_and_never_erases_the_audit_log",
+      "Lateral.Cms.Tests.Api.HardeningTests.Disabling_and_enabling_an_entity_are_audited_once_each_with_the_admins_name_and_repeats_add_nothing"
+    ]
+  },
+  {
+    "id": "M64",
+    "area": "Hardening",
+    "rule": "the reset is allowed in any environment but Production",
+    "file": "src/Lateral.Cms/Admin/AdminEndpoints.cs",
+    "find": "return string.Equals(options.ResetAllowedEnvironment, environment.EnvironmentName, StringComparison.OrdinalIgnoreCase)",
+    "replace": "return true",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.HardeningTests.The_reset_is_refused_in_every_environment_that_has_not_been_named_on_purpose_and_always_in_production"
+    ]
+  },
+  {
+    "id": "M65",
+    "area": "Hardening",
+    "rule": "X-Forwarded-For is believed from anyone",
+    "file": "src/Lateral.Cms/Auth/DevelopmentCredentials.cs",
+    "find": "if (!proxy.Enabled)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.HardeningTests.Without_a_trusted_proxy_a_forged_forwarded_for_header_cannot_dodge_the_throttle"
+    ]
+  },
+  {
+    "id": "M66",
+    "area": "Hardening",
+    "rule": "no limit on batches read into memory at once",
+    "file": "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs",
+    "find": "            .RequireRateLimiting(AcceptLimiter)\n",
+    "replace": "",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.HardeningTests.Only_as_many_batches_are_read_into_memory_at_once_as_configured_and_the_rest_get_429_with_retry_after"
+    ]
+  },
+  {
+    "id": "M67",
+    "area": "Hardening",
+    "rule": "development credentials are generated in every environment",
+    "file": "src/Lateral.Cms/Auth/DevelopmentCredentials.cs",
+    "find": "if (!builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(builder.Configuration[\"Auth:Cms:Username\"]))",
+    "replace": "if (!string.IsNullOrWhiteSpace(builder.Configuration[\"Auth:Cms:Username\"]))",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.HardeningTests.Outside_development_nothing_is_generated_so_missing_credentials_still_stop_startup"
+    ]
+  },
+  {
+    "id": "M68",
+    "area": "Hardening",
+    "rule": "the test console starts in any environment",
+    "file": "tools/Lateral.Cms.TestConsole/Program.cs",
+    "find": "if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>($\"{ConsoleOptions.SectionName}:AllowNonDevelopment\"))",
+    "replace": "if (false)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.TestConsole.Tests.EnvironmentGuardTests.Outside_development_the_console_refuses_to_start_and_says_how_to_override"
+    ]
+  },
+  {
+    "id": "M69",
+    "area": "Hardening",
+    "rule": "failed batch bytes are not reported",
+    "file": "src/Lateral.Cms/Ingestion/QueueSupport.cs",
+    "find": ", failed?.Bytes ?? 0);",
+    "replace": ", 0);",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.InboxWorkerTests.Stopping_the_app_stops_the_worker_cleanly_with_no_errors",
+      "Lateral.Cms.Tests.Api.HardeningTests.The_failed_bytes_are_reported_so_set_aside_batches_cannot_quietly_fill_the_queue"
+    ]
+  },
+  {
+    "id": "M70",
+    "area": "Hardening",
+    "rule": "a connection open cancelled by shutdown is logged as an error",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "if (eventData.Exception is OperationCanceledException\n",
+    "replace": "if (false\n",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.ShutdownTests.Many_apps_stopped_at_once_log_no_errors"
+    ]
+  },
+  {
+    "id": "M71",
+    "area": "Hardening",
+    "rule": "connections are opened in parallel (the pool race returns)",
+    "file": "src/Lateral.Cms/Persistence/PersistenceExtensions.cs",
+    "find": "        lock (OpenLock)\n        {\n            open();\n        }",
+    "replace": "        open();",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.A_slow_scan_does_not_hold_up_ingestion_because_it_runs_outside_the_write_gate",
+      "Lateral.Cms.Tests.Persistence.ConnectionPoolTests.No_two_connections_are_ever_being_opened_at_once"
+    ]
+  },
+  {
+    "id": "M72",
+    "area": "Assets",
+    "rule": "the write gate is held for the whole scan",
+    "file": "src/Lateral.Cms/Assets/ScanProcessor.cs",
+    "find": "                    result = await scanner.ScanAsync(stream,",
+    "replace": "                    using var held = await gate.AcquireAsync(cancellationToken);\n                    result = await scanner.ScanAsync(stream,",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ScanPipelineTests.A_slow_scan_does_not_hold_up_ingestion_because_it_runs_outside_the_write_gate"
+    ]
+  },
+  {
+    "id": "M73",
+    "area": "Photos",
+    "rule": "a refused download is not asked for again",
+    "file": "tools/Lateral.Cms.TestConsole/MediaEndpoints.cs",
+    "find": "if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests || attempt == Attempts)",
+    "replace": "if (true)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.TestConsole.Tests.MediaProxyTests.A_refused_download_because_too_many_are_running_is_asked_for_again"
+    ]
+  },
+  {
+    "id": "M74",
+    "area": "Photos",
+    "rule": "every picture is offered as a download",
+    "file": "tools/Lateral.Cms.TestConsole/MediaEndpoints.cs",
+    "find": "if (download is \"1\" or \"true\" && response.Content.Headers.ContentDisposition is { } disposition)",
+    "replace": "if (response.Content.Headers.ContentDisposition is { } disposition)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.TestConsole.Tests.MediaProxyTests.It_is_shown_in_the_page_unless_the_page_asks_for_a_download"
+    ]
+  },
+  {
+    "id": "M75",
+    "area": "Photos",
+    "rule": "the console API no longer needs its header (the relaxed check leaks to /api)",
+    "file": "tools/Lateral.Cms.TestConsole/LocalRequestGuard.cs",
+    "find": "Refusal(context.Request, requireHeader: isApi)",
+    "replace": "Refusal(context.Request, requireHeader: false)",
+    "project": "tests/Lateral.Cms.TestConsole.Tests",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.TestConsole.Tests.ConsoleApiTests.A_request_without_the_console_header_is_refused_before_anything_is_proxied"
     ]
   }
 ]
