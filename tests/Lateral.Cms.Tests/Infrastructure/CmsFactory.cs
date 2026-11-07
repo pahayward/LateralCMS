@@ -65,12 +65,15 @@ public class CmsFactory : WebApplicationFactory<Program>
     /// <summary>Whether the real background worker runs. Off by default; tests drive the processor themselves.</summary>
     protected virtual bool WorkerEnabled => false;
 
+    /// <summary>The hosting environment. Most tests run as "Testing"; a few need the behaviour of "Development" (which has its own defaults).</summary>
+    protected virtual string EnvironmentName => "Testing";
+
     /// <summary>Extra or overriding configuration for a specific test class.</summary>
     protected virtual IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(EnvironmentName);
 
         var settings = new Dictionary<string, string?>
         {

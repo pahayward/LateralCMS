@@ -1225,5 +1225,59 @@
     "failed": [
       "Lateral.Cms.TestConsole.Tests.ConsoleApiTests.A_request_without_the_console_header_is_refused_before_anything_is_proxied"
     ]
+  },
+  {
+    "id": "M76",
+    "area": "Hardening",
+    "rule": "a malformed query value or body is a 500 in Development",
+    "file": "src/Lateral.Cms/Program.cs",
+    "find": "options.ThrowOnBadRequest = false",
+    "replace": "options.ThrowOnBadRequest = true",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.BadInputTests.Starting_an_upload_with_a_body_that_is_not_the_expected_json_is_a_400",
+      "Lateral.Cms.Tests.Api.BadInputTests.A_query_value_that_is_not_a_number_is_a_400_even_in_development",
+      "Lateral.Cms.Tests.Api.BadInputTests.An_unknown_asset_state_in_the_admin_list_is_a_400"
+    ]
+  },
+  {
+    "id": "M77",
+    "area": "Assets",
+    "rule": "a range in an unknown unit is treated as bytes",
+    "file": "src/Lateral.Cms/Assets/AssetEndpoints.cs",
+    "find": "{ Length: > 0 } range && !range.StartsWith(\"bytes=\", StringComparison.OrdinalIgnoreCase))",
+    "replace": "{ Length: > 0 } range && false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Api.BadInputTests.A_bad_range_unit_is_ignored_and_the_whole_file_is_sent"
+    ]
+  },
+  {
+    "id": "M78",
+    "area": "Console",
+    "rule": "the endpoint catalogue says users may post events",
+    "file": "tools/Lateral.Cms.TestConsole/wwwroot/endpoints.json",
+    "find": "\"title\": \"Send a batch of events\",\n      \"who\": [\"cms\"]",
+    "replace": "\"title\": \"Send a batch of events\",\n      \"who\": [\"cms\", \"user\"]",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.EndpointCatalogueTests.The_catalogue_names_the_same_callers_as_the_role_matrix_proves"
+    ]
+  },
+  {
+    "id": "M79",
+    "area": "Console",
+    "rule": "the architecture diagram points at a file that does not exist",
+    "file": "tools/Lateral.Cms.TestConsole/wwwroot/diagrams/architecture.json",
+    "find": "\"src/Lateral.Cms/Ingestion/AcceptService.cs\"",
+    "replace": "\"src/Lateral.Cms/Ingestion/AcceptServiceGone.cs\"",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.EndpointCatalogueTests.A_diagram_describes_real_files_and_real_tests_and_every_walkthrough_step_points_at_a_real_box"
+    ]
   }
 ]

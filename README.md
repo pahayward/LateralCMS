@@ -9,7 +9,7 @@ answers `202` with a link to follow it. A background worker then applies each ba
 changes state if it sorts after what is stored, so replays do nothing and late or duplicated events cannot undo newer
 ones. Users read published entities; admins read everything and can disable an entity locally without touching the CMS.
 
-**Contents:** [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Photo library](#photo-library-a-sample-application) · [Test console](#test-console) ·
+**Contents:** [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
 [Tests](#tests) · [Configuration](#configuration) · [Outside Development](#running-outside-development) ·
 [Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Docs](#docs)
 
@@ -41,7 +41,7 @@ In Visual Studio, open `Lateral.sln` and pick the **CMS and test console** start
 ## Try it
 
 These commands are run by CI against the built service (the `README try-it` job), so they stay true. They need only `curl`
-and a POSIX shell (bash, zsh, Git Bash); on Windows without one, use the [test console](#test-console) or
+and a POSIX shell (bash, zsh, Git Bash); on Windows without one, use the [engineering console](#engineering-console) or
 [requests.http](requests.http) instead. Pipe any response through `jq .` if you have it.
 
 Set up the accounts. The generated credentials file lists three passwords in order (CMS, user, admin) and the usernames are in
@@ -148,7 +148,7 @@ test "$(curl -s -o /dev/null -w '%{http_code}' -u "$READER" "$BASE/api/assets/$B
 test "$(curl -s -o /dev/null -w '%{http_code}' -u "$ADMIN" "$BASE/api/assets/$BAD_ID")" = 404
 ```
 
-A large file, the S3 way: start an upload, send the parts (they may be sent in parallel; the [test console](#test-console) does), and
+A large file, the S3 way: start an upload, send the parts (they may be sent in parallel; the [engineering console](#engineering-console) does), and
 complete it. Then fetch it back as three parallel byte ranges and check the pieces reassemble to the original:
 
 ```bash try-it
@@ -215,24 +215,36 @@ good. Pictures reach `<img>` tags through `/media/{id}`, a read-only route of th
 Listing is by id, so the page reads the whole library a page at a time; a CMS shared with other content would want a prefix
 filter on the listing (not built).
 
-## Test console
+## Engineering console
 
-The engineering console, at `/engineering` (the second tab of the site), is a browser page for driving all of this by hand: send batches from ready-made scenarios (update and replay, out of order,
-same version with different content, bad events, an oversized payload, a video by reference), act as the CMS, a user, an
-admin, or with wrong credentials, browse entities, and watch the queue. Credentials stay on the console's server; the
-browser only ever names an account.
+The second tab of the console site, at `/engineering`, is for testing the service by hand and for explaining it. Credentials
+stay on the console's server; the page only ever names an account. Every call it makes is shown as the curl (or PowerShell,
+or raw HTTP) that repeats it, with the request log docked at the bottom.
 
 ```bash
-dotnet run --project src/Lateral.Cms            # terminal 1: the service on :5080
+dotnet run --project src/Lateral.Cms                 # terminal 1: the service on :5080
 dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console on http://localhost:5100/engineering
 ```
 
-It listens on loopback only and reaches only an allow-list of the service's routes. In Development it reads the accounts
-from the service's generated development credentials, and it refuses to start outside the Development environment unless
-`Console:AllowNonDevelopment` is set. Tabs: **Send events**, **Browse and admin**, **Auth matrix**, **Large files**, **Assets** (upload
-in parallel parts, watch the scanner, download in parallel ranges and verify the hash),
-**Queue**, **Endpoints**. The **Browse and admin** tab has a *Reset* button that erases all data; it only exists while
-`Admin:AllowReset` is on, which is refused in Production.
+| Page | What it is for |
+|---|---|
+| **Overview** | Is it healthy now (up, worker, queue, failures, counts), where to start, and a **guided tour** that walks one record through publish, read, replay, unpublish and delete against the real service |
+| **Design and architecture** | Three diagrams with clickable boxes and a walkthrough for each (the architecture, the life of an event, the life of an asset), the reconciliation rules, the guarantees and the tests behind them, the security model, the limits, talking points and a glossary |
+| **Records** | List what the CMS holds as a user or an admin, filter it, page through it, and drill into one record: its payload, the files it points at, a checksum check, **who can see it** (asked as every caller), the request that fetches it, and what can be done to it |
+| **Assets** | Upload (one `PUT`, or parallel multipart parts), watch the scanner decide, download in parallel ranges and verify the hash, and administer what is stored |
+| **Send events** | Build a batch from a scenario, the form or by editing the JSON, see it as curl, send it as any caller and watch it go from accepted to applied |
+| **API workbench** | Every endpoint, editable (path, query, headers, body, caller), shown as curl, PowerShell or raw HTTP, sent, with the response explained and the obvious next call offered. It remembers the last ids it saw |
+| **Queue and admin** | Live queue depth, oldest wait and a trend line; failed batches with requeue; re-scan of assets cleared by an older scanner; the test-only erase (only while `Admin:AllowReset` is on, which is refused in Production) |
+| **Security and limits** | Who may do what (every endpoint as every caller), a validation suite (one event per rule, at and past each boundary, with the exact reason each must give), sign-in edge cases, and what happens to an oversized body |
+
+The endpoint catalogue behind the workbench is a data file, `wwwroot/endpoints.json`; a service test fails if it stops
+matching the routes and roles the service really has. The diagrams are generated by `node tools/diagrams/build.mjs`.
+
+The console listens on loopback only and reaches only an allow-list of the service's routes. In Development it reads the
+accounts from the service's generated development credentials, and it refuses to start outside the Development environment
+unless `Console:AllowNonDevelopment` is set.
+
+![The architecture](tools/Lateral.Cms.TestConsole/wwwroot/diagrams/architecture.svg)
 
 ## Tests
 
@@ -255,6 +267,11 @@ valid and invalid combinations, every role on every route, the log contents, and
 - Load smoke: `dotnet run -c Release --project tools/Lateral.Cms.LoadSmoke -- --senders 8 --batches 25 --events 100`
   starts the built service with generated credentials and prints throughput and latency. It measures; it does not assert.
 
+**Exploratory testing.** `tools/explore/probe.mjs` is a 168-check probe of a *running* service (every field at and past its
+boundary, reconciliation under concurrent writers, assets and ranges, headers and sign-in); it flags any 5xx. Run it against a
+throwaway instance, never one with data you care about; its header says how. The engineering console's **Security and
+limits** page runs the auth matrix and a validation suite live, and its **API workbench** shows any call as curl.
+
 ## Configuration
 
 Set in `appsettings.json` or as environment variables (`Ingestion__MaxBatchSize=100`). Invalid values stop startup and
@@ -269,7 +286,7 @@ name the setting.
 | `Auth:Users` | none | list of `{Username, Password (12+ chars), Role: User or Admin}` |
 | `Auth:MaxFailuresPerMinute` | `10` | failed sign-ins per address before `429`; `0` disables |
 | `Ingestion:MaxBodyBytes` / `MaxBatchSize` / `MaxPayloadBytes` | 5 MiB / 500 / 256 KiB | refused with `413`, `413`, and a rejected event |
-| `Ingestion:MaxJsonDepth` / `MaxFutureSkew` | 32 / 1 hour | |
+| `Ingestion:MaxJsonDepth` / `MaxFutureSkew` | 32 / 1 hour | the depth counts the whole request (the array and the event are two levels, so a payload may nest about 30) |
 | `Ingestion:ChecksumAlgorithm` | `sha256` | `sha256` or `md5` |
 | `Inbox:WorkerEnabled` | `true` | tests turn it off and drive the processor |
 | `Inbox:PollInterval` / `MaxAttempts` | 1 s / 5 | |

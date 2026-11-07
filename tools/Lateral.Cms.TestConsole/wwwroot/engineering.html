@@ -6,244 +6,64 @@
   <title>Engineering · Lateral CMS</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="site.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="eng.css">
 </head>
-<body>
+<body class="eng-page">
   <div class="site-bar">
     <span class="brand">Lateral CMS</span>
     <nav aria-label="Site">
       <a href="/">Photos</a>
       <a href="/engineering" aria-current="page">Engineering</a>
     </nav>
-    <span class="note">Test console: drive the CMS by hand</span>
+    <span class="note">Drive the CMS by hand, see what it does, explain how it works</span>
   </div>
-  <header class="top">
-    <div>
-      <h1>CMS test console</h1>
-      <p class="sub">Drive the CMS as the webhook sender, a user and an admin. Credentials stay on the console's server.</p>
-    </div>
-    <div class="target">
-      <span id="health-dot" class="dot" title="Not checked yet"></span>
-      <code id="cms-url">...</code>
-      <button id="health-btn" type="button" class="btn small">Check</button>
-    </div>
-  </header>
 
-  <nav class="tabs" id="tabs" aria-label="Views">
-    <button type="button" data-view="send" aria-selected="true">Send events</button>
-    <button type="button" data-view="browse" aria-selected="false">Browse and admin</button>
-    <button type="button" data-view="matrix" aria-selected="false">Auth matrix</button>
-    <button type="button" data-view="large" aria-selected="false">Large files</button>
-    <button type="button" data-view="assets" aria-selected="false">Assets</button>
-    <button type="button" data-view="queue" aria-selected="false">Queue</button>
-    <button type="button" data-view="endpoints" aria-selected="false">Endpoints</button>
-  </nav>
-
-  <div id="ep-strip" class="ep-strip" aria-label="Endpoints this view calls" hidden></div>
-
-  <main>
-    <div id="setup-banner" class="banner bad" hidden></div>
-
-    <section id="view-send" class="view">
-      <div class="card">
-        <div class="card-head"><h2>Scenarios</h2><span class="hint">Each one fills the batch below with fresh ids. Edit it before sending if you like.</span></div>
-        <div id="scenarios" class="scenarios"></div>
-      </div>
-
-      <div class="grid two">
-        <div class="card">
-          <h2>Build an event</h2>
-          <div class="form">
-            <label>Entity id
-              <span class="row"><input id="ev-id" autocomplete="off" spellcheck="false"><button id="ev-newid" type="button" class="btn small">New</button></span>
-            </label>
-            <label>Type
-              <input id="ev-type" list="ev-types" value="publish" autocomplete="off">
-              <datalist id="ev-types"><option value="publish"><option value="unPublish"><option value="delete"><option value="archive"></datalist>
-            </label>
-            <div class="row">
-              <label>Version <input id="ev-version" type="number" min="0" value="1"></label>
-              <label class="grow">Timestamp (UTC)
-                <span class="row"><input id="ev-ts" autocomplete="off" spellcheck="false"><button id="ev-now" type="button" class="btn small">Now</button></span>
-              </label>
-            </div>
-            <label>Payload (a JSON object; ignored for delete)
-              <textarea id="ev-payload" rows="4" spellcheck="false">{ "title": "Hello", "body": "First draft" }</textarea>
-            </label>
-            <label>Attach a file as a reference
-              <input id="ev-file" type="file">
-            </label>
-            <p id="ev-note" class="hint" hidden></p>
-            <p id="ev-error" class="hint" hidden></p>
-            <div><button id="ev-add" type="button" class="btn primary">Add to batch</button></div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h2>Batch</h2><span id="batch-badge" class="chip">empty</span></div>
-          <textarea id="batch" rows="15" spellcheck="false" aria-label="Batch of events as JSON"></textarea>
-          <div class="row wrap">
-            <label class="inline">Send as <span id="send-as"></span></label>
-            <span class="spacer"></span>
-            <button id="batch-clear" type="button" class="btn ghost">Clear</button>
-            <button id="batch-send" type="button" class="btn primary">Send batch</button>
-          </div>
+  <div class="eng">
+    <aside class="eng-nav" aria-label="Engineering console">
+      <div class="target" id="target">
+        <div class="target-label">Testing the CMS at</div>
+        <code id="cms-url">…</code>
+        <div class="row">
+          <span id="health-dot" class="dot" title="Not checked yet"></span>
+          <span id="health-text" class="hint">checking…</span>
+          <button id="health-btn" type="button" class="btn small ghost">Check</button>
         </div>
       </div>
+      <nav id="nav" class="nav-groups" aria-label="Views"></nav>
+      <div class="nav-foot" id="nav-foot"></div>
+    </aside>
 
-      <div id="send-result" class="card" hidden></div>
+    <main class="eng-main" id="eng-main" tabindex="-1">
+      <header class="eng-head">
+        <h1 id="eng-title">Overview</h1>
+        <p id="eng-sub" class="sub"></p>
+        <div id="eng-strip" class="ep-strip" hidden aria-label="Endpoints this page calls"></div>
+      </header>
+      <div id="setup-banner" class="banner bad" hidden></div>
+      <div id="eng-view"></div>
+    </main>
+
+    <section class="dock" id="dock" aria-label="Request log">
+      <details id="dock-details">
+        <summary><span>Requests</span> <span id="dock-count" class="chip">0</span>
+          <span class="hint">Every call, newest first, with the curl that repeats it. Passwords never appear: the console adds them.</span></summary>
+        <div class="dock-actions"><button id="dock-clear" type="button" class="btn small ghost">Clear</button></div>
+        <ul id="dock-list" class="dock-list"></ul>
+      </details>
     </section>
+  </div>
 
-    <section id="view-browse" class="view" hidden>
-      <div class="card">
-        <div class="row wrap">
-          <label class="inline">View as <span id="browse-as"></span></label>
-          <label class="inline">Page size <input id="b-limit" type="number" min="1" max="100" value="5"></label>
-          <button id="b-load" type="button" class="btn primary">List entities</button>
-          <span class="spacer"></span>
-          <input id="b-lookup" placeholder="Look up an entity id" autocomplete="off" spellcheck="false">
-          <button id="b-get" type="button" class="btn">Look up</button>
-        </div>
-        <p class="hint">A user sees only published, enabled entities, so an entity you have just unpublished or disabled drops out of that list. An admin sees everything, with a status. Hidden and missing entities both answer 404.</p>
-      </div>
+  <div class="toasts" id="eng-toasts" aria-live="polite"></div>
 
-      <div class="grid two">
-        <div class="card">
-          <div class="card-head"><h2>Entities</h2><span id="b-summary" class="hint"></span></div>
-          <div id="b-message" class="banner" hidden></div>
-          <div class="table-wrap">
-            <table id="b-table" hidden>
-              <thead><tr><th>Id</th><th class="num">Ver</th><th>Checksum</th><th>Status</th></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-          <div><button id="b-more" type="button" class="btn" hidden>Load more</button></div>
-        </div>
-        <div id="b-detail" class="card">
-          <h2>Entity</h2>
-          <p class="hint">Pick an entity from the list, or look one up by id.</p>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Test data</h2><span class="hint">For testing only</span></div>
-        <div class="row wrap">
-          <button id="b-reset" type="button" class="btn danger">Reset all data</button>
-          <span class="hint">Erases every entity, tombstone, ledger row and queued batch so you can start again. It always runs as the admin account, and only works while the CMS has Admin:AllowReset switched on (Development does).</span>
-        </div>
-        <div id="b-reset-result" class="banner" hidden></div>
-      </div>
-    </section>
-
-    <section id="view-matrix" class="view" hidden>
-      <div class="card">
-        <div class="card-head"><h2>Who can do what</h2><button id="m-run" type="button" class="btn primary">Run the matrix</button></div>
-        <p class="hint">
-          Publishes a fixture entity as the CMS account, then calls every endpoint as every kind of caller and compares each status
-          with what the design says it should be. The wrong-password row runs last because failed sign-ins are throttled per client
-          (a second run within a minute may show 429 there). The admin disable is undone at the end.
-        </p>
-        <div id="m-summary" class="banner info" hidden></div>
-        <div class="table-wrap"><table id="m-table" class="matrix"></table></div>
-      </div>
-    </section>
-
-    <section id="view-assets" class="view" hidden>
-      <div id="assets-root"></div>
-    </section>
-
-    <section id="view-large" class="view" hidden>
-      <div class="card">
-        <h2>What happens to a 10 GB video?</h2>
-        <p>
-          The CMS holds the video. This service only receives the <em>event</em> about it, and the event carries the entity's fields
-          (a title, a description, and a reference to the file), never the file. So the webhook refuses large bodies outright. The
-          file itself goes to the <strong>Assets</strong> tab: multipart upload, scanning, and ranged downloads. Try the probe below:
-          it really sends the webhook a request of that size.
-        </p>
-      </div>
-
-      <div class="grid two">
-        <div class="card">
-          <h2>Check a real file</h2>
-          <input id="l-file" type="file" aria-label="Pick a file to check against the limits">
-          <div id="l-verdict" class="form" hidden></div>
-          <div><button id="l-ref" type="button" class="btn" hidden>Add it to the batch as a reference</button></div>
-          <p class="hint">Nothing is uploaded. The browser reads only the name, type and size.</p>
-        </div>
-
-        <div class="card">
-          <h2>Probe the webhook with an oversized body</h2>
-          <div class="row wrap">
-            <label class="inline">Size <input id="p-size" type="number" min="1" value="10"></label>
-            <select id="p-unit" aria-label="Unit"><option>KiB</option><option>MiB</option><option selected>GiB</option></select>
-            <span class="row wrap">
-              <button type="button" class="btn small preset" data-size="1" data-unit="MiB">1 MiB</button>
-              <button type="button" class="btn small preset" data-size="6" data-unit="MiB">6 MiB</button>
-              <button type="button" class="btn small preset" data-size="10" data-unit="GiB">10 GiB</button>
-            </span>
-          </div>
-          <div class="row wrap">
-            <label class="inline"><input type="radio" name="p-mode" value="declared" checked> Declare the length</label>
-            <label class="inline"><input type="radio" name="p-mode" value="chunked"> Chunked (no length)</label>
-            <label class="inline"><input id="p-expect" type="checkbox"> Expect: 100-continue</label>
-          </div>
-          <div><button id="p-run" type="button" class="btn primary">Run probe</button></div>
-          <div id="p-result" class="form" hidden></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="view-queue" class="view" hidden>
-      <div class="card">
-        <div class="card-head">
-          <h2>Ingestion queue</h2>
-          <span class="row">
-            <label class="inline"><input id="q-auto" type="checkbox" checked> Refresh every 2 s</label>
-            <button id="q-refresh" type="button" class="btn small">Refresh</button>
-          </span>
-        </div>
-        <p class="hint">
-          The CMS stores a batch, answers 202 and applies it a moment later. This is where it waits.
-          Reading it needs the admin account. A queue that keeps growing, or a batch that has failed, is what an operator watches for.
-        </p>
-        <div id="q-message" class="banner" hidden></div>
-        <dl id="q-facts" class="kv"></dl>
-      </div>
-
-      <div class="card">
-        <div class="card-head"><h2>Failed batches</h2><span class="hint">Set aside after too many failed attempts. They do not hold up the queue; an admin requeues them once the cause is fixed.</span></div>
-        <div class="table-wrap">
-          <table id="q-failed" hidden>
-            <thead><tr><th>Batch</th><th>Received</th><th class="num">Events</th><th class="num">Attempts</th><th>Last error</th><th></th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <p id="q-none" class="hint">None.</p>
-      </div>
-    </section>
-
-    <section id="view-endpoints" class="view" hidden>
-      <div class="card">
-        <div class="card-head"><h2>Endpoints</h2><span class="hint">Everything the CMS exposes, and who may call it.</span></div>
-        <div class="table-wrap"><table id="ep-table" class="endpoints"></table></div>
-        <p class="hint">
-          No endpoint changes an entity's content: the CMS is the only source of truth, so a PUT on an entity is refused (see the Auth matrix).
-          The reset is not in the Auth matrix, because running it would erase the data.
-        </p>
-      </div>
-    </section>
-  </main>
-
-  <section class="log">
-    <details id="log-panel" open>
-      <summary>Request log <span id="log-count" class="chip">0</span></summary>
-      <div class="row"><button id="log-clear" type="button" class="btn small ghost">Clear</button><span class="hint">Newest first. Passwords never appear here: the proxy adds them.</span></div>
-      <div id="log-list"></div>
-    </details>
-  </section>
-
-  <script src="app.js"></script>
-  <script src="assets.js"></script>
+  <script src="eng-core.js"></script>
+  <script src="eng-overview.js"></script>
+  <script src="eng-design.js"></script>
+  <script src="eng-records.js"></script>
+  <script src="eng-events.js"></script>
+  <script src="eng-assets.js"></script>
+  <script src="eng-workbench.js"></script>
+  <script src="eng-ops.js"></script>
+  <script src="eng-verify.js"></script>
+  <script src="eng-start.js"></script>
 </body>
 </html>

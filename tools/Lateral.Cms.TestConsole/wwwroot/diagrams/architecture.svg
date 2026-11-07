@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 706" width="1200" height="706" role="img" aria-label="Lateral CMS: architecture">
+  <style>
+    :root { --bg:#ffffff; --box:#f3f5fb; --stroke:#c4cce0; --text:#1a2133; --muted:#5b6579;
+            --ingest:#3552d6; --asset:#1f9d63; --read:#d4761c; --admin:#8a4fd8; --store:#66708a; --bad:#c23a3f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#171b26; --box:#212737; --stroke:#3a4560; --text:#e8ebf4; --muted:#9aa4ba;
+              --ingest:#8aa0ff; --asset:#58d39b; --read:#f0a35a; --admin:#c19bff; --store:#9aa4ba; --bad:#ff8f93; }
+    }
+    text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; fill: var(--text); }
+    .bg { fill: var(--bg); }
+    .title { font-size: 20px; font-weight: 700; }
+    .lede { font-size: 13px; fill: var(--muted); }
+    .h { font-size: 14px; font-weight: 650; }
+    .s { font-size: 11.5px; fill: var(--muted); }
+    .lab { font-size: 11.5px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+    .halo { paint-order: stroke; stroke: var(--bg); stroke-width: 6px; stroke-linejoin: round; }
+    .group { fill: none; stroke: var(--stroke); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .box { fill: var(--box); stroke: var(--stroke); stroke-width: 1.6; }
+    .ingest .box, .ingest.box { stroke: var(--ingest); } .ingest .h { fill: var(--ingest); }
+    .asset .box, .asset.box { stroke: var(--asset); } .asset .h { fill: var(--asset); }
+    .read .box, .read.box { stroke: var(--read); } .read .h { fill: var(--read); }
+    .admin .box, .admin.box { stroke: var(--admin); } .admin .h { fill: var(--admin); }
+    .store .box, .store.box { stroke: var(--store); } .store .h { fill: var(--text); }
+    .bad .box { stroke: var(--bad); } .bad .h { fill: var(--bad); }
+    .a { fill: none; stroke-width: 2.2; }
+    .a.ingest { stroke: var(--ingest); } .a.asset { stroke: var(--asset); } .a.read { stroke: var(--read); } .a.admin { stroke: var(--admin); }
+    .a.bad { stroke: var(--bad); } .a.store { stroke: var(--store); }
+    .dash { stroke-dasharray: 7 5; }
+    .life { stroke: var(--stroke); stroke-width: 1.5; stroke-dasharray: 4 5; }
+    .dot { stroke: none; }
+    .dot.ingest { fill: var(--ingest); } .dot.asset { fill: var(--asset); } .dot.read { fill: var(--read); } .dot.admin { fill: var(--admin); } .dot.bad { fill: var(--bad); }
+    .num { font-size: 12px; font-weight: 700; fill: #fff; text-anchor: middle; }
+    .mid { text-anchor: middle; }
+  </style><defs><marker id="m-ingest" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot ingest"/></marker><marker id="m-asset" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot asset"/></marker><marker id="m-read" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot read"/></marker><marker id="m-admin" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot admin"/></marker><marker id="m-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot bad"/></marker><marker id="m-store" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot store"/></marker></defs>
+<rect class="bg" width="1200" height="706"/>
+<text class="title" x="24" y="32">Lateral CMS: architecture</text><text class="lede" x="24" y="52">Blue: events in. Green: files. Orange: reads. Purple: admin. Boxes are clickable in the engineering console.</text>
+<rect class="group" x="24" y="138" width="1152" height="124" rx="14"/>
+<path class="a ingest" d="M120 120 V174" marker-end="url(#m-ingest)"/>
+<path class="a ingest" d="M120 244 V294" marker-end="url(#m-ingest)"/>
+<path class="a ingest" d="M120 366 V404" marker-end="url(#m-ingest)"/>
+<path class="a ingest" d="M120 534 V476" marker-end="url(#m-ingest)" marker-start="url(#m-ingest)"/>
+<path class="a ingest" d="M216 566 H600 V476" marker-end="url(#m-ingest)"/>
+<path class="a asset" d="M360 120 V174" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M360 244 V294" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M360 366 V404" marker-end="url(#m-asset)"/>
+<path class="a read" d="M600 120 V174" marker-end="url(#m-read)"/>
+<path class="a read" d="M600 244 V294" marker-end="url(#m-read)"/>
+<path class="a read" d="M600 366 V404" marker-end="url(#m-read)"/>
+<path class="a asset" d="M840 120 V174" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M840 244 V294" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M840 366 V404" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M840 534 V476" marker-end="url(#m-asset)"/>
+<path class="a asset" d="M744 582 H360 V476" marker-end="url(#m-asset)"/>
+<path class="a admin" d="M1080 120 V174" marker-end="url(#m-admin)"/>
+<path class="a admin" d="M1080 244 V294" marker-end="url(#m-admin)"/>
+<path class="a admin" d="M1080 366 V404" marker-end="url(#m-admin)"/>
+<g class="ingest" data-id="cms"><rect class="box" x="24" y="66" width="432" height="54" rx="10"/></g>
+<g class="read" data-id="users"><rect class="box" x="504" y="66" width="432" height="54" rx="10"/></g>
+<g class="admin" data-id="admins"><rect class="box" x="984" y="66" width="192" height="54" rx="10"/></g>
+<g class="ingest" data-id="r-webhook"><rect class="box" x="24" y="174" width="192" height="70" rx="10"/></g>
+<g class="asset" data-id="r-upload"><rect class="box" x="264" y="174" width="192" height="70" rx="10"/></g>
+<g class="read" data-id="r-read"><rect class="box" x="504" y="174" width="192" height="70" rx="10"/></g>
+<g class="asset" data-id="r-download"><rect class="box" x="744" y="174" width="192" height="70" rx="10"/></g>
+<g class="admin" data-id="r-admin"><rect class="box" x="984" y="174" width="192" height="70" rx="10"/></g>
+<g class="ingest" data-id="s-accept"><rect class="box" x="24" y="294" width="192" height="72" rx="10"/></g>
+<g class="asset" data-id="s-intake"><rect class="box" x="264" y="294" width="192" height="72" rx="10"/></g>
+<g class="read" data-id="s-read"><rect class="box" x="504" y="294" width="192" height="72" rx="10"/></g>
+<g class="asset" data-id="s-serve"><rect class="box" x="744" y="294" width="192" height="72" rx="10"/></g>
+<g class="admin" data-id="s-admin"><rect class="box" x="984" y="294" width="192" height="72" rx="10"/></g>
+<g class="ingest" data-id="db-queue"><rect class="box" x="24" y="404" width="192" height="72" rx="10"/></g>
+<g class="asset" data-id="disk-quarantine"><rect class="box" x="264" y="404" width="192" height="72" rx="10"/></g>
+<g class="read" data-id="db-entities"><rect class="box" x="504" y="404" width="192" height="72" rx="10"/></g>
+<g class="asset" data-id="disk-blobs"><rect class="box" x="744" y="404" width="192" height="72" rx="10"/></g>
+<g class="admin" data-id="db-audit"><rect class="box" x="984" y="404" width="192" height="72" rx="10"/></g>
+<g class="ingest" data-id="w-batch"><rect class="box" x="24" y="534" width="192" height="64" rx="10"/></g>
+<g class="asset" data-id="w-scan"><rect class="box" x="744" y="534" width="192" height="64" rx="10"/></g>
+<g class="asset" data-id="w-sweep"><rect class="box" x="984" y="534" width="192" height="64" rx="10"/></g>
+<g class="store" data-id="cross"><rect class="box" x="24" y="636" width="1152" height="44" rx="10"/></g>
+<g class="ingest"><text class="h" x="240" y="88" text-anchor="middle">The CMS</text></g>
+<text class="s" x="240" y="105" text-anchor="middle">the source of truth: publishes, unpublishes, deletes, uploads files</text>
+<g class="read"><text class="h" x="720" y="88" text-anchor="middle">Users and apps</text></g>
+<text class="s" x="720" y="105" text-anchor="middle">read published records and download clean files (the photo library is one)</text>
+<g class="admin"><text class="h" x="1080" y="88" text-anchor="middle">Admins</text></g>
+<text class="s" x="1080" y="105" text-anchor="middle">override, requeue, re-scan</text>
+<text class="s halo" x="40" y="158">HTTP edge (ASP.NET Core): Basic authentication, three roles, a throttle on failed sign-ins, body and rate limits, a correlation id on every acknowledgement</text>
+<g class="ingest"><text class="h" x="120" y="196" text-anchor="middle">POST /cms/events</text></g>
+<text class="s" x="120" y="213" text-anchor="middle">the webhook</text>
+<text class="s" x="120" y="227" text-anchor="middle">array of up to 500 events</text>
+<g class="asset"><text class="h" x="360" y="196" text-anchor="middle">PUT /cms/assets/…</text></g>
+<text class="s" x="360" y="213" text-anchor="middle">simple upload</text>
+<text class="s" x="360" y="227" text-anchor="middle">or multipart, in parts</text>
+<g class="read"><text class="h" x="600" y="196" text-anchor="middle">GET /api/entities</text></g>
+<text class="s" x="600" y="213" text-anchor="middle">list (by cursor)</text>
+<text class="s" x="600" y="227" text-anchor="middle">and read one record</text>
+<g class="asset"><text class="h" x="840" y="196" text-anchor="middle">GET /api/assets/{id}</text></g>
+<text class="s" x="840" y="213" text-anchor="middle">Range, ETag, HEAD</text>
+<text class="s" x="840" y="227" text-anchor="middle">parallel downloads</text>
+<g class="admin"><text class="h" x="1080" y="196" text-anchor="middle">/api/admin/*</text></g>
+<text class="s" x="1080" y="213" text-anchor="middle">disable, enable, requeue</text>
+<text class="s" x="1080" y="227" text-anchor="middle">re-scan, delete, queue report</text>
+<g class="ingest"><text class="h" x="120" y="316" text-anchor="middle">Accept</text></g>
+<text class="s" x="120" y="333" text-anchor="middle">validate every event,</text>
+<text class="s" x="120" y="347" text-anchor="middle">checksum, store in one</text>
+<text class="s" x="120" y="361" text-anchor="middle">transaction</text>
+<g class="asset"><text class="h" x="360" y="316" text-anchor="middle">Asset intake</text></g>
+<text class="s" x="360" y="333" text-anchor="middle">stream to disk, assemble</text>
+<text class="s" x="360" y="347" text-anchor="middle">parts, verify SHA-256,</text>
+<text class="s" x="360" y="361" text-anchor="middle">enforce the quota</text>
+<g class="read"><text class="h" x="600" y="316" text-anchor="middle">Read queries</text></g>
+<text class="s" x="600" y="333" text-anchor="middle">a read-only database</text>
+<text class="s" x="600" y="347" text-anchor="middle">connection; the caller's</text>
+<text class="s" x="600" y="361" text-anchor="middle">role decides visibility</text>
+<g class="asset"><text class="h" x="840" y="316" text-anchor="middle">Asset serving</text></g>
+<text class="s" x="840" y="333" text-anchor="middle">only clean files;</text>
+<text class="s" x="840" y="347" text-anchor="middle">ranges and ETags;</text>
+<text class="s" x="840" y="361" text-anchor="middle">caller limits</text>
+<g class="admin"><text class="h" x="1080" y="316" text-anchor="middle">Admin services</text></g>
+<text class="s" x="1080" y="333" text-anchor="middle">disable, requeue, re-scan,</text>
+<text class="s" x="1080" y="347" text-anchor="middle">delete; every one audited</text>
+<g class="ingest"><text class="h" x="120" y="426" text-anchor="middle">Queue and ledger</text></g>
+<text class="s" x="120" y="443" text-anchor="middle">Batches + Events</text>
+<text class="s" x="120" y="457" text-anchor="middle">SQLite table</text>
+<g class="asset"><text class="h" x="360" y="426" text-anchor="middle">Quarantine</text></g>
+<text class="s" x="360" y="443" text-anchor="middle">files not yet cleared</text>
+<text class="s" x="360" y="457" text-anchor="middle">plain folder on disk</text>
+<g class="read"><text class="h" x="600" y="426" text-anchor="middle">Current state</text></g>
+<text class="s" x="600" y="443" text-anchor="middle">Entities + Tombstones</text>
+<text class="s" x="600" y="457" text-anchor="middle">SQLite tables</text>
+<g class="asset"><text class="h" x="840" y="426" text-anchor="middle">Clean files</text></g>
+<text class="s" x="840" y="443" text-anchor="middle">content-addressed blobs</text>
+<text class="s" x="840" y="457" text-anchor="middle">blobs/ab/cd/&lt;sha256&gt;</text>
+<g class="admin"><text class="h" x="1080" y="426" text-anchor="middle">Audit log</text></g>
+<text class="s" x="1080" y="443" text-anchor="middle">append-only SQLite table</text>
+<g class="ingest"><text class="h" x="120" y="556" text-anchor="middle">Batch worker</text></g>
+<text class="s" x="120" y="573" text-anchor="middle">applies each batch with</text>
+<text class="s" x="120" y="587" text-anchor="middle">a pure reducer</text>
+<g class="asset"><text class="h" x="840" y="556" text-anchor="middle">Scan worker</text></g>
+<text class="s" x="840" y="573" text-anchor="middle">IAssetScanner (a mock)</text>
+<text class="s" x="840" y="587" text-anchor="middle">clean, reject or retry</text>
+<g class="asset"><text class="h" x="1080" y="556" text-anchor="middle">Sweeper</text></g>
+<text class="s" x="1080" y="573" text-anchor="middle">expires uploads, removes</text>
+<text class="s" x="1080" y="587" text-anchor="middle">files nothing accounts for</text>
+<g class="store"><text class="h" x="600" y="658" text-anchor="middle">Everywhere: structured logs (never payloads or passwords) · metrics (queue depth, oldest age, failed bytes) · correlation ids · every call repeatable as curl</text></g>
+<text class="lab" x="128" y="396" text-anchor="start">one transaction</text>
+<text class="lab" x="128" y="512" text-anchor="start">reads, then writes outcome</text>
+<text class="lab" x="230" y="556" text-anchor="start">applies</text>
+<text class="lab" x="848" y="398" text-anchor="start">reads</text>
+<text class="lab" x="848" y="516" text-anchor="start">clean: move</text>
+<text class="lab" x="730" y="574" text-anchor="end">reads</text>
+</svg>

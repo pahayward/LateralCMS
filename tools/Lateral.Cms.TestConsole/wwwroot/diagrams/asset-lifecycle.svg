@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 470" width="1180" height="470" role="img" aria-label="The life of an asset">
+  <style>
+    :root { --bg:#ffffff; --box:#f3f5fb; --stroke:#c4cce0; --text:#1a2133; --muted:#5b6579;
+            --ingest:#3552d6; --asset:#1f9d63; --read:#d4761c; --admin:#8a4fd8; --store:#66708a; --bad:#c23a3f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#171b26; --box:#212737; --stroke:#3a4560; --text:#e8ebf4; --muted:#9aa4ba;
+              --ingest:#8aa0ff; --asset:#58d39b; --read:#f0a35a; --admin:#c19bff; --store:#9aa4ba; --bad:#ff8f93; }
+    }
+    text { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; fill: var(--text); }
+    .bg { fill: var(--bg); }
+    .title { font-size: 20px; font-weight: 700; }
+    .lede { font-size: 13px; fill: var(--muted); }
+    .h { font-size: 14px; font-weight: 650; }
+    .s { font-size: 11.5px; fill: var(--muted); }
+    .lab { font-size: 11.5px; font-weight: 600; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+    .halo { paint-order: stroke; stroke: var(--bg); stroke-width: 6px; stroke-linejoin: round; }
+    .group { fill: none; stroke: var(--stroke); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .box { fill: var(--box); stroke: var(--stroke); stroke-width: 1.6; }
+    .ingest .box, .ingest.box { stroke: var(--ingest); } .ingest .h { fill: var(--ingest); }
+    .asset .box, .asset.box { stroke: var(--asset); } .asset .h { fill: var(--asset); }
+    .read .box, .read.box { stroke: var(--read); } .read .h { fill: var(--read); }
+    .admin .box, .admin.box { stroke: var(--admin); } .admin .h { fill: var(--admin); }
+    .store .box, .store.box { stroke: var(--store); } .store .h { fill: var(--text); }
+    .bad .box { stroke: var(--bad); } .bad .h { fill: var(--bad); }
+    .a { fill: none; stroke-width: 2.2; }
+    .a.ingest { stroke: var(--ingest); } .a.asset { stroke: var(--asset); } .a.read { stroke: var(--read); } .a.admin { stroke: var(--admin); }
+    .a.bad { stroke: var(--bad); } .a.store { stroke: var(--store); }
+    .dash { stroke-dasharray: 7 5; }
+    .life { stroke: var(--stroke); stroke-width: 1.5; stroke-dasharray: 4 5; }
+    .dot { stroke: none; }
+    .dot.ingest { fill: var(--ingest); } .dot.asset { fill: var(--asset); } .dot.read { fill: var(--read); } .dot.admin { fill: var(--admin); } .dot.bad { fill: var(--bad); }
+    .num { font-size: 12px; font-weight: 700; fill: #fff; text-anchor: middle; }
+    .mid { text-anchor: middle; }
+  </style><defs><marker id="m-ingest" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot ingest"/></marker><marker id="m-asset" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot asset"/></marker><marker id="m-read" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot read"/></marker><marker id="m-admin" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot admin"/></marker><marker id="m-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot bad"/></marker><marker id="m-store" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dot store"/></marker></defs>
+<rect class="bg" width="1180" height="470"/>
+<text class="title" x="24" y="32">The life of an asset</text><text class="lede" x="24" y="52">Dashed lines are admin actions.</text>
+
+<path class="a asset" d="M214 130 H374" marker-end="url(#m-asset)"/>
+<path class="a ingest" d="M594 118 C660 118 670 85 730 85" marker-end="url(#m-ingest)"/>
+<path class="a bad" d="M594 150 C670 150 670 225 730 225" marker-end="url(#m-bad)"/>
+<path class="a ingest" d="M514 90 C514 40 464 40 464 90" marker-end="url(#m-ingest)"/>
+<path class="a admin" d="M454 170 V280" marker-end="url(#m-admin)"/>
+<path class="a admin dash" d="M524 280 V170" marker-end="url(#m-admin)"/>
+<path class="a admin dash" d="M800 120 C800 146 610 146 574 170" marker-end="url(#m-admin)"/>
+<path class="a store dash" d="M950 80 C972 80 972 150 990 155" marker-end="url(#m-store)"/>
+<g class="asset" data-id="uploading"><rect class="box" x="24" y="90" width="190" height="80" rx="10"/></g>
+<g class="ingest" data-id="quarantined"><rect class="box" x="374" y="90" width="220" height="80" rx="10"/></g>
+<g class="asset" data-id="clean"><rect class="box" x="730" y="40" width="220" height="80" rx="10"/></g>
+<g class="bad" data-id="rejected"><rect class="box" x="730" y="190" width="220" height="80" rx="10"/></g>
+<g class="admin" data-id="failed"><rect class="box" x="374" y="280" width="220" height="80" rx="10"/></g>
+<g class="store" data-id="deleted"><rect class="box" x="990" y="115" width="170" height="80" rx="10"/></g>
+<g class="asset"><text class="h" x="119" y="112" text-anchor="middle">uploading</text></g>
+<text class="s" x="119" y="129" text-anchor="middle">multipart parts on disk</text>
+<text class="s" x="119" y="143" text-anchor="middle">not yet an asset</text>
+<g class="ingest"><text class="h" x="484" y="112" text-anchor="middle">quarantined</text></g>
+<text class="s" x="484" y="129" text-anchor="middle">on disk, never served</text>
+<text class="s" x="484" y="143" text-anchor="middle">waiting for the scanner</text>
+<g class="asset"><text class="h" x="840" y="62" text-anchor="middle">clean</text></g>
+<text class="s" x="840" y="79" text-anchor="middle">served: ranges, ETag</text>
+<text class="s" x="840" y="93" text-anchor="middle">content-addressed blob</text>
+<g class="bad"><text class="h" x="840" y="212" text-anchor="middle">rejected</text></g>
+<text class="s" x="840" y="229" text-anchor="middle">bytes wiped</text>
+<text class="s" x="840" y="243" text-anchor="middle">only the verdict is kept</text>
+<g class="admin"><text class="h" x="484" y="302" text-anchor="middle">set aside</text></g>
+<text class="s" x="484" y="319" text-anchor="middle">the scan kept failing</text>
+<text class="s" x="484" y="333" text-anchor="middle">still never served</text>
+<g class="store"><text class="h" x="1075" y="137" text-anchor="middle">deleted</text></g>
+<text class="s" x="1075" y="154" text-anchor="middle">row removed</text>
+<text class="s" x="1075" y="168" text-anchor="middle">bytes overwritten, removed</text>
+<text class="lab" x="294" y="116" text-anchor="middle">complete</text>
+<text class="lab" x="294" y="152" text-anchor="middle">SHA-256 checked</text>
+<text class="lab" x="664" y="74" text-anchor="middle">scan: clean</text>
+<text class="lab" x="672" y="214" text-anchor="middle">scan: flagged</text>
+<text class="lab" x="489" y="28" text-anchor="middle">error or timeout:</text>
+<text class="lab" x="489" y="42" text-anchor="middle">retry with back-off</text>
+<text class="lab" x="444" y="232" text-anchor="end">after N failed attempts</text>
+<text class="lab" x="534" y="232" text-anchor="start">admin: requeue</text>
+<text class="lab" x="720" y="160" text-anchor="middle">admin: re-scan</text>
+<text class="lab" x="985" y="112" text-anchor="middle">admin: delete</text>
+<text class="s" x="30" y="420">Any asset in any state can be deleted by an admin. Everything an admin does is audited.</text>
+<text class="s" x="30" y="440">The scan runs in the background: a quarantined asset becomes clean (or not) within a second or two, depending on its size.</text>
+</svg>

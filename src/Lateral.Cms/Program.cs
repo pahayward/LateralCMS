@@ -19,6 +19,10 @@ DevelopmentCredentials.AddIfDevelopment(builder);
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddProblemDetails();
+
+// A query value or body that cannot be read is the caller's mistake: a 400 with a problem body. ASP.NET's default in the
+// Development environment is to throw instead, which the exception handler turns into a 500, so say it plainly.
+builder.Services.Configure<Microsoft.AspNetCore.Routing.RouteHandlerOptions>(options => options.ThrowOnBadRequest = false);
 builder.Services.ConfigureHttpJsonOptions(options =>
     // Outcomes go over the wire as snake_case words: "applied", "ignored_stale", ...
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower)));

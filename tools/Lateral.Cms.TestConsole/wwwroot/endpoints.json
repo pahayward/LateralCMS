@@ -1,0 +1,421 @@
+{
+  "version": 1,
+  "about": "Every route the CMS maps, once. The workbench, the curl generator and the endpoint strip all read this file. A service test fails if a route is added, removed or opened to a different role without it being updated here.",
+  "areas": [
+    { "id": "events", "title": "Events in", "blurb": "How the CMS tells this service what changed." },
+    { "id": "records", "title": "Records out", "blurb": "What users and admins read." },
+    { "id": "assets", "title": "Assets", "blurb": "Files: upload, scan, download." },
+    { "id": "ops", "title": "Operations", "blurb": "Health, the queue and test-only tools." }
+  ],
+  "endpoints": [
+    {
+      "id": "ingest",
+      "route": "POST /cms/events",
+      "area": "events",
+      "title": "Send a batch of events",
+      "who": ["cms"],
+      "what": "The webhook. A JSON array of up to 500 events (publish, unPublish, delete). The batch is validated and stored in one transaction, then acknowledged; the worker applies it a moment later.",
+      "body": {
+        "kind": "json",
+        "note": "An array of events. Each has type, id, timestamp, and for publish/unPublish a version and a payload object. Delete needs only type, id and timestamp.",
+        "example": [
+          { "type": "publish", "id": "{{id}}", "version": 1, "payload": { "title": "Hello", "body": "First draft" }, "timestamp": "{{now}}" }
+        ]
+      },
+      "responses": {
+        "202": "Stored safely, not yet applied. Every accepted event shows outcome queued. Follow the Location header, or GET /cms/batches/{batchId}.",
+        "200": "Decided at once: every event was rejected or ignored (or the batch was empty), so nothing was queued.",
+        "400": "The body is not a JSON array, is not valid JSON, or is nested too deeply (the depth limit counts the whole request: the array, the event and the payload).",
+        "401": "No credentials, or wrong ones. Repeated wrong passwords from one address are throttled.",
+        "403": "Signed in, but not as the CMS account.",
+        "405": "Only POST is allowed here.",
+        "413": "Over 5 MiB, or more than 500 events. Nothing was stored. Declare Content-Length so this is answered before the body is read.",
+        "429": "The queue is full or too many batches are being read at once. Retry-After says when to try again; nothing was stored.",
+        "503": "The service could not store the batch. Nothing was kept; send it again."
+      },
+      "view": "events"
+    },
+    {
+      "id": "batch",
+      "route": "GET /cms/batches/{batchId:guid}",
+      "area": "events",
+      "title": "Follow a batch",
+      "who": ["cms", "admin"],
+      "what": "Where a batch has got to: queued, completed (with each event's final outcome) or failed. Never returns payloads.",
+      "params": [{ "name": "batchId", "about": "The batchId from the acknowledgement of POST /cms/events.", "context": "batchId" }],
+      "responses": {
+        "200": "The batch and its per-event results. status is queued, completed or failed.",
+        "404": "No such batch.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Users cannot follow batches."
+      },
+      "view": "events"
+    },
+    {
+      "id": "list",
+      "route": "GET /api/entities",
+      "area": "records",
+      "title": "List records",
+      "who": ["user", "admin"],
+      "what": "Entities in id order, a page at a time by cursor. Users see published, enabled entities; admins see all of them, each with a status block.",
+      "query": [
+        { "name": "limit", "about": "Page size, 1 to 100 (default 50). Out-of-range numbers are clamped; text is a 400.", "example": "20" },
+        { "name": "cursor", "about": "The nextCursor from the previous page. Treat it as opaque.", "example": "" }
+      ],
+      "responses": {
+        "200": "A page: items and nextCursor (null on the last page).",
+        "400": "The limit is not a whole number, or the cursor is not one this service produced.",
+        "401": "No credentials, or wrong ones.",
+        "403": "The CMS account cannot read the API."
+      },
+      "view": "records"
+    },
+    {
+      "id": "get",
+      "route": "GET /api/entities/{id}",
+      "area": "records",
+      "title": "Read one record",
+      "who": ["user", "admin"],
+      "what": "One entity with its payload, version, checksum and last-update time. A hidden entity looks exactly like a missing one.",
+      "params": [{ "name": "id", "about": "The entity id.", "context": "entityId" }],
+      "responses": {
+        "200": "The entity. Admins also get a status block (published, disabled by).",
+        "404": "Missing, unpublished, disabled or deleted. For a user these are indistinguishable on purpose; ask as an admin to tell them apart.",
+        "401": "No credentials, or wrong ones.",
+        "403": "The CMS account cannot read the API."
+      },
+      "view": "records"
+    },
+    {
+      "id": "disable",
+      "route": "POST /api/entities/{id}/disable",
+      "area": "records",
+      "title": "Disable a record",
+      "who": ["admin"],
+      "what": "Hide an entity from users without touching the CMS's own data. Audited.",
+      "params": [{ "name": "id", "about": "The entity id.", "context": "entityId" }],
+      "responses": {
+        "200": "The new state: whether it is visible to users and who disabled it.",
+        "404": "No such entity.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "records"
+    },
+    {
+      "id": "enable",
+      "route": "POST /api/entities/{id}/enable",
+      "area": "records",
+      "title": "Enable a record",
+      "who": ["admin"],
+      "what": "Undo a disable. The entity is visible again if the CMS has it published.",
+      "params": [{ "name": "id", "about": "The entity id.", "context": "entityId" }],
+      "responses": {
+        "200": "The new state.",
+        "404": "No such entity.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "records"
+    },
+    {
+      "id": "asset-put",
+      "route": "PUT /cms/assets/{key}",
+      "area": "assets",
+      "title": "Upload a small file",
+      "who": ["cms"],
+      "what": "One request, up to the simple limit (8 MiB by default). Streamed to disk into quarantine; it is not served until the scanner has cleared it.",
+      "params": [{ "name": "key", "about": "A name for the file: 1 to 200 characters, no slash, backslash or control characters." }],
+      "headers": [
+        { "name": "Content-Type", "about": "The declared type. The scanner checks it against what the bytes really are.", "example": "image/png" },
+        { "name": "X-Content-SHA256", "about": "Optional. If sent, the upload is refused when the content does not hash to it.", "example": "" }
+      ],
+      "body": { "kind": "file", "note": "The raw bytes. Choose a file, or generate some." },
+      "responses": {
+        "202": "Received and quarantined. The body has the asset id and state quarantined. Poll GET /cms/assets/{id} until it is clean.",
+        "400": "Bad key, bad checksum text, a checksum that does not match, or an empty body.",
+        "413": "Over the simple limit: use a multipart upload.",
+        "429": "The store is full. Nothing was kept.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Only the CMS account uploads."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-start",
+      "route": "POST /cms/assets/uploads",
+      "area": "assets",
+      "title": "Start a multipart upload",
+      "who": ["cms"],
+      "what": "S3-style: say what you are going to send (key, type, total size) and get an upload id and the part limits back.",
+      "body": { "kind": "json", "note": "key, contentType and size (bytes).", "example": { "key": "big-file.bin", "contentType": "application/octet-stream", "size": 12000000 } },
+      "responses": {
+        "201": "Started. The body has uploadId, the minimum and maximum part size, the part limit and when it expires.",
+        "400": "Missing or invalid key or size, or the body is not the expected JSON.",
+        "413": "Larger than the per-object limit.",
+        "429": "The store is full.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Only the CMS account uploads."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-part",
+      "route": "PUT /cms/assets/uploads/{uploadId:guid}/parts/{partNumber:int}",
+      "area": "assets",
+      "title": "Upload one part",
+      "who": ["cms"],
+      "what": "One part of a multipart upload. Parts can be sent in parallel and sent again (the last one wins). Every part but the last must be at least the minimum size.",
+      "params": [
+        { "name": "uploadId", "about": "From the start response.", "context": "uploadId" },
+        { "name": "partNumber", "about": "1 to the part limit.", "example": "1" }
+      ],
+      "headers": [{ "name": "X-Content-SHA256", "about": "Optional checksum of this part.", "example": "" }],
+      "body": { "kind": "file", "note": "The bytes of this part." },
+      "responses": {
+        "200": "Stored. The body has the part's size and SHA-256; keep it for the complete call.",
+        "400": "Part number out of range, checksum mismatch, or the parts add up to more than was declared.",
+        "404": "Unknown, expired, completed or aborted upload.",
+        "413": "A part is larger than the maximum part size.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Only the CMS account uploads."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-complete",
+      "route": "POST /cms/assets/uploads/{uploadId:guid}/complete",
+      "area": "assets",
+      "title": "Complete a multipart upload",
+      "who": ["cms"],
+      "what": "List the parts in order. They are assembled, hashed and checked against the declared size, then quarantined for scanning.",
+      "params": [{ "name": "uploadId", "about": "From the start response.", "context": "uploadId" }],
+      "body": { "kind": "json", "note": "parts: each part's number and SHA-256, in order, none missing.", "example": { "parts": [{ "partNumber": 1, "sha256": "<from the part response>" }] } },
+      "responses": {
+        "202": "Assembled and quarantined. The body is the asset.",
+        "400": "A part is missing, out of order, has the wrong checksum, is too small, or the total is not the declared size.",
+        "404": "Unknown, expired or already completed.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Only the CMS account uploads."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-abort",
+      "route": "DELETE /cms/assets/uploads/{uploadId:guid}",
+      "area": "assets",
+      "title": "Abort a multipart upload",
+      "who": ["cms"],
+      "what": "Abandon an upload and remove its parts.",
+      "params": [{ "name": "uploadId", "about": "From the start response.", "context": "uploadId" }],
+      "responses": {
+        "204": "Aborted and cleaned up.",
+        "404": "Unknown or already finished.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Only the CMS account uploads."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-status",
+      "route": "GET /cms/assets/{id:guid}",
+      "area": "assets",
+      "title": "Ask about an asset",
+      "who": ["cms", "admin"],
+      "what": "The asset's state (quarantined, clean, rejected, failed), checksum and scan verdict. Never the bytes.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "responses": {
+        "200": "The asset. state tells you whether it can be served; verdict and signature say what the scanner found.",
+        "404": "No such asset (or it was deleted).",
+        "401": "No credentials, or wrong ones.",
+        "403": "Users cannot ask about assets, only download clean ones."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-get",
+      "route": "GET /api/assets/{id:guid}",
+      "area": "assets",
+      "title": "Download an asset",
+      "who": ["user", "admin"],
+      "what": "Streams a clean asset. Supports Range, If-Range, ETag and If-None-Match, so many ranges can be fetched in parallel and a download resumed. Always an attachment, never sniffed or framed.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "headers": [
+        { "name": "Range", "about": "bytes=0-99 (first 100), bytes=-100 (last 100), bytes=100- (from 100). Other units are ignored.", "example": "bytes=0-99" },
+        { "name": "If-None-Match", "about": "An ETag from an earlier download: 304 if unchanged.", "example": "" }
+      ],
+      "responses": {
+        "200": "The whole file.",
+        "206": "The range asked for, with Content-Range.",
+        "304": "Not modified since the ETag you sent.",
+        "404": "Missing, deleted, or not clean. A quarantined or rejected asset is the same 404 as one that never existed.",
+        "416": "The range starts beyond the end of the file.",
+        "429": "Too many downloads open at once for this caller.",
+        "401": "No credentials, or wrong ones.",
+        "403": "The CMS account cannot download."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-head",
+      "route": "HEAD /api/assets/{id:guid}",
+      "area": "assets",
+      "title": "Check an asset without downloading",
+      "who": ["user", "admin"],
+      "what": "The same answer as the download, without the bytes: size, type and ETag.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "responses": {
+        "200": "Headers only: Content-Length, Content-Type, ETag, Accept-Ranges.",
+        "404": "Missing, deleted, or not clean.",
+        "401": "No credentials, or wrong ones.",
+        "403": "The CMS account cannot download."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-delete",
+      "route": "DELETE /api/assets/{id:guid}",
+      "area": "assets",
+      "title": "Delete an asset for good",
+      "who": ["admin"],
+      "what": "Hard delete: the row goes and the bytes are overwritten and removed (best effort on SSDs). Audited.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "danger": true,
+      "responses": {
+        "204": "Deleted.",
+        "404": "No such asset.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-list",
+      "route": "GET /api/admin/assets",
+      "area": "assets",
+      "title": "List assets",
+      "who": ["admin"],
+      "what": "Assets with their state, newest first, optionally one state only.",
+      "query": [
+        { "name": "state", "about": "quarantined, clean, rejected or failed.", "example": "" },
+        { "name": "limit", "about": "How many to return.", "example": "50" }
+      ],
+      "responses": {
+        "200": "A list of assets.",
+        "400": "state is not one of the four states.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-rescan",
+      "route": "POST /api/admin/assets/{id:guid}/rescan",
+      "area": "assets",
+      "title": "Re-scan an asset",
+      "who": ["admin"],
+      "what": "Put a clean asset back in quarantine for another scan (for example after the scanner's signatures were updated). It is not served again until cleared.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "responses": {
+        "200": "Back in quarantine.",
+        "409": "Only a clean asset can be re-scanned (or it does not exist).",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-requeue",
+      "route": "POST /api/admin/assets/{id:guid}/requeue",
+      "area": "assets",
+      "title": "Requeue a set-aside asset",
+      "who": ["admin"],
+      "what": "An asset whose scanning kept failing is set aside, still unserved. This tries it again.",
+      "params": [{ "name": "id", "about": "The asset id.", "context": "assetId" }],
+      "responses": {
+        "200": "Back in the scan queue.",
+        "409": "Only an asset whose scanning was set aside can be requeued (or it does not exist).",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "asset-rescan-outdated",
+      "route": "POST /api/admin/assets/rescan-outdated",
+      "area": "assets",
+      "title": "Re-scan everything cleared by an older scanner",
+      "who": ["admin"],
+      "what": "Every clean asset records which scanner version cleared it. This queues the ones cleared by an older version.",
+      "responses": {
+        "200": "The scanner version and how many assets were queued.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "assets"
+    },
+    {
+      "id": "report",
+      "route": "GET /api/admin/ingestion",
+      "area": "ops",
+      "title": "Is the queue keeping up?",
+      "who": ["admin"],
+      "what": "Batches and events waiting, the age of the oldest, space used and the failed batches (with their bytes).",
+      "responses": {
+        "200": "The queue report.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "ops"
+    },
+    {
+      "id": "requeue",
+      "route": "POST /api/admin/ingestion/{batchId:guid}/requeue",
+      "area": "ops",
+      "title": "Requeue a failed batch",
+      "who": ["admin"],
+      "what": "Put a batch the worker set aside back in the queue, once the cause is fixed. Audited.",
+      "params": [{ "name": "batchId", "about": "A failed batch.", "context": "batchId" }],
+      "responses": {
+        "200": "Queued again.",
+        "404": "No such batch.",
+        "409": "The batch has not failed.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "ops"
+    },
+    {
+      "id": "reset",
+      "route": "POST /api/admin/reset",
+      "area": "ops",
+      "title": "Erase everything (test only)",
+      "who": ["admin"],
+      "what": "Erase every entity, tombstone, ledger row and queued batch. Needs the confirmation phrase. The route exists only when Admin:AllowReset is on, which is refused in Production. The audit log survives.",
+      "body": { "kind": "json", "note": "The confirmation phrase must be exactly this.", "example": { "confirm": "reset-all-data" } },
+      "danger": true,
+      "optional": true,
+      "responses": {
+        "200": "Erased: the counts of what was removed.",
+        "400": "The confirmation phrase is missing or wrong.",
+        "404": "The route is switched off (the default).",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "ops"
+    },
+    {
+      "id": "health",
+      "route": "GET /health",
+      "area": "ops",
+      "title": "Is it up?",
+      "who": ["cms", "user", "admin", "anonymous"],
+      "what": "Whether the service is running and its database reachable. No credentials needed.",
+      "responses": {
+        "200": "Up.",
+        "503": "The database is not reachable."
+      },
+      "view": "overview"
+    }
+  ]
+}

@@ -1,0 +1,605 @@
+{
+  "id": "architecture",
+  "title": "Architecture",
+  "width": 1200,
+  "height": 706,
+  "nodes": [
+    {
+      "id": "cms",
+      "x": 24,
+      "y": 66,
+      "w": 432,
+      "h": 54,
+      "title": "The CMS",
+      "lane": "ingest",
+      "text": "The content-management system that owns the content. It is the only caller allowed to write. It tells this service what changed by POSTing events, and sends files as assets.",
+      "points": [
+        "One account (the \"CMS account\"), several passwords may be live so one can be rotated without downtime.",
+        "It never reads the API: the CMS account gets 403 on every read route.",
+        "This service is a read model: if it were wiped, the CMS could replay its events and rebuild it."
+      ],
+      "code": [
+        "src/Lateral.Cms/Auth/AuthExtensions.cs"
+      ],
+      "tests": [
+        "RoleMatrixTests"
+      ]
+    },
+    {
+      "id": "users",
+      "x": 504,
+      "y": 66,
+      "w": 432,
+      "h": 54,
+      "title": "Users and apps",
+      "lane": "read",
+      "text": "Anyone who consumes the content: websites, apps, the photo library in this repository. Read-only. They see only published records that no admin has disabled, and only files the scanner has cleared.",
+      "points": [
+        "A hidden record answers exactly like one that never existed (404), so the API never confirms a restricted record is there.",
+        "The photo library keeps everything in this service: photos are records, pictures are assets."
+      ],
+      "code": [
+        "src/Lateral.Cms/Entities/EntityQueries.cs"
+      ],
+      "tests": [
+        "EntitiesEndpointTests",
+        "OverrideAndPolicyTests"
+      ]
+    },
+    {
+      "id": "admins",
+      "x": 984,
+      "y": 66,
+      "w": 192,
+      "h": 54,
+      "title": "Admins",
+      "lane": "admin",
+      "text": "People who operate the service. They see everything (with a status), can hide a record locally without touching the CMS, and run the operational tools.",
+      "points": [
+        "Every admin action is written to an append-only audit log in the same transaction as the change.",
+        "There is a test-only \"erase everything\" route. It exists only where it was switched on, never in Production."
+      ],
+      "code": [
+        "src/Lateral.Cms/Admin/AdminEndpoints.cs"
+      ],
+      "tests": [
+        "HardeningTests",
+        "ResetEndpointTests"
+      ]
+    },
+    {
+      "id": "r-webhook",
+      "x": 24,
+      "y": 174,
+      "w": 192,
+      "h": 70,
+      "title": "POST /cms/events",
+      "lane": "ingest",
+      "text": "The one door for content changes. The declared length is checked before a byte is read, so an oversized body is refused (413) without being transferred or held in memory.",
+      "points": [
+        "Only the CMS account may call it.",
+        "A bounded number of batches are read at once; overflow gets 429 with Retry-After.",
+        "The answer is 202: stored, not yet applied."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs"
+      ],
+      "tests": [
+        "IngestionEndpointTests",
+        "BasicAuthTests",
+        "RouteAndTransportTests"
+      ]
+    },
+    {
+      "id": "r-upload",
+      "x": 264,
+      "y": 174,
+      "w": 192,
+      "h": 70,
+      "title": "PUT /cms/assets/…",
+      "lane": "asset",
+      "text": "How the CMS sends files. One PUT up to a limit, or an S3-style multipart upload: start, send parts in parallel, complete.",
+      "points": [
+        "Each part may carry a SHA-256 that is checked.",
+        "Parts can be re-sent; the last one wins.",
+        "Everything goes to quarantine first."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetEndpoints.cs"
+      ],
+      "tests": [
+        "UploadTests"
+      ]
+    },
+    {
+      "id": "r-read",
+      "x": 504,
+      "y": 174,
+      "w": 192,
+      "h": 70,
+      "title": "GET /api/entities",
+      "lane": "read",
+      "text": "The read API. Records come back in id order, a page at a time, by an opaque cursor, so the cost of a page does not grow with how deep you are.",
+      "points": [
+        "There is deliberately no route that changes a record: the CMS is the only source of truth.",
+        "Users and admins only; the CMS account gets 403."
+      ],
+      "code": [
+        "src/Lateral.Cms/Entities/EntityEndpoints.cs"
+      ],
+      "tests": [
+        "EntitiesEndpointTests",
+        "RouteAndTransportTests"
+      ]
+    },
+    {
+      "id": "r-download",
+      "x": 744,
+      "y": 174,
+      "w": 192,
+      "h": 70,
+      "title": "GET /api/assets/{id}",
+      "lane": "asset",
+      "text": "Downloads stream with byte ranges, so many ranges of one large file can be fetched at once and an interrupted download can resume. The ETag is the file's SHA-256.",
+      "points": [
+        "Always an attachment, never sniffed or framed.",
+        "A per-caller cap on concurrent downloads; beyond it, 429."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetEndpoints.cs"
+      ],
+      "tests": [
+        "DownloadTests"
+      ]
+    },
+    {
+      "id": "r-admin",
+      "x": 984,
+      "y": 174,
+      "w": 192,
+      "h": 70,
+      "title": "/api/admin/*",
+      "lane": "admin",
+      "text": "The operational routes. Admin role only.",
+      "points": [
+        "Disable hides a record from users without touching the CMS.",
+        "Requeue puts a failed batch (or a set-aside asset) back in line.",
+        "The queue report is what an operator watches."
+      ],
+      "code": [
+        "src/Lateral.Cms/Admin/AdminEndpoints.cs",
+        "src/Lateral.Cms/Ingestion/BatchEndpoints.cs"
+      ],
+      "tests": [
+        "RoleMatrixTests",
+        "HardeningTests"
+      ]
+    },
+    {
+      "id": "s-accept",
+      "x": 24,
+      "y": 294,
+      "w": 192,
+      "h": 72,
+      "title": "Accept",
+      "lane": "ingest",
+      "text": "Validates each event on its own, so one bad event never spoils the rest, then stores the whole batch and every accepted event in a single transaction before answering.",
+      "points": [
+        "Each rule has a stable reason code (invalid_version, payload_too_large, timestamp_in_future…).",
+        "The payload is checksummed in a canonical form so the same content always has the same checksum.",
+        "Answered only after the commit: an acknowledgement means it is safely on disk."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/AcceptService.cs",
+        "src/Lateral.Cms/Ingestion/EventParser.cs"
+      ],
+      "tests": [
+        "AcceptanceTests",
+        "EventParserTests",
+        "PayloadChecksumTests"
+      ]
+    },
+    {
+      "id": "s-intake",
+      "x": 264,
+      "y": 294,
+      "w": 192,
+      "h": 72,
+      "title": "Asset intake",
+      "lane": "asset",
+      "text": "Streams the bytes straight to disk (never held in memory), assembles multipart parts, verifies sizes and checksums, and enforces the store's quota before accepting anything.",
+      "points": [
+        "A file is not served until it has been scanned.",
+        "Identical content is stored once."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetService.cs",
+        "src/Lateral.Cms/Assets/FileAssetStore.cs"
+      ],
+      "tests": [
+        "UploadTests",
+        "LargeAssetTests"
+      ]
+    },
+    {
+      "id": "s-read",
+      "x": 504,
+      "y": 294,
+      "w": 192,
+      "h": 72,
+      "title": "Read queries",
+      "lane": "read",
+      "text": "Reads through a separate, read-only database context. What a caller may see is decided here, from their role, never from a request parameter.",
+      "points": [
+        "Users: published and not disabled. Admins: everything, with a status block.",
+        "Keyset pagination: stable under inserts, constant cost per page."
+      ],
+      "code": [
+        "src/Lateral.Cms/Entities/EntityQueries.cs"
+      ],
+      "tests": [
+        "EntitiesEndpointTests",
+        "EntityPagingTests",
+        "ListingIndexTests"
+      ]
+    },
+    {
+      "id": "s-serve",
+      "x": 744,
+      "y": 294,
+      "w": 192,
+      "h": 72,
+      "title": "Asset serving",
+      "lane": "asset",
+      "text": "Looks the asset up and serves it only if its state is clean. Quarantined, rejected and set-aside assets are the same 404 as a missing one.",
+      "points": [
+        "Range requests are handled by the framework's file streaming (206, 416, If-Range).",
+        "A range in an unknown unit is ignored (RFC 9110)."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetEndpoints.cs"
+      ],
+      "tests": [
+        "DownloadTests",
+        "ScanPipelineTests"
+      ]
+    },
+    {
+      "id": "s-admin",
+      "x": 984,
+      "y": 294,
+      "w": 192,
+      "h": 72,
+      "title": "Admin services",
+      "lane": "admin",
+      "text": "The operational actions. Each writes an audit row in the same transaction as the change.",
+      "points": [
+        "Delete of an asset overwrites the bytes with zeros before removing the file (best effort on SSDs and copy-on-write filesystems)."
+      ],
+      "code": [
+        "src/Lateral.Cms/Entities/EntityAdminService.cs",
+        "src/Lateral.Cms/Assets/AssetService.cs"
+      ],
+      "tests": [
+        "HardeningTests",
+        "HousekeepingTests"
+      ]
+    },
+    {
+      "id": "db-queue",
+      "x": 24,
+      "y": 404,
+      "w": 192,
+      "h": 72,
+      "title": "Queue and ledger",
+      "lane": "ingest",
+      "text": "One table is both the work queue and the permanent record of every event received, so what was received is never in doubt.",
+      "points": [
+        "Indexed so the worker's \"next batch\" is a seek, not a scan.",
+        "The queue has a size cap; a full queue answers 429 and stores nothing.",
+        "A failed batch is set aside (never retried forever, never dropped) until an admin requeues it."
+      ],
+      "code": [
+        "src/Lateral.Cms/Persistence/CmsDbContext.cs"
+      ],
+      "tests": [
+        "InboxIndexTests",
+        "InboxFailureTests"
+      ]
+    },
+    {
+      "id": "disk-quarantine",
+      "x": 264,
+      "y": 404,
+      "w": 192,
+      "h": 72,
+      "title": "Quarantine",
+      "lane": "asset",
+      "text": "Where every upload waits. Nothing here can be downloaded. A flagged file is wiped from here and only its verdict is kept.",
+      "points": [
+        "Parts of unfinished multipart uploads live beside it and expire."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/FileAssetStore.cs"
+      ],
+      "tests": [
+        "ScanPipelineTests",
+        "HousekeepingTests"
+      ]
+    },
+    {
+      "id": "db-entities",
+      "x": 504,
+      "y": 404,
+      "w": 192,
+      "h": 72,
+      "title": "Current state",
+      "lane": "read",
+      "text": "The latest state of every record, plus a payload-free tombstone for each deleted id so an older event can never bring it back.",
+      "points": [
+        "secure_delete is on for every connection, so a deleted payload is overwritten in the file, not just unlinked.",
+        "WAL mode: readers never block the single writer."
+      ],
+      "code": [
+        "src/Lateral.Cms/Persistence/CmsDbContext.cs"
+      ],
+      "tests": [
+        "StorageGuaranteeTests",
+        "PersistenceGuaranteeTests"
+      ]
+    },
+    {
+      "id": "disk-blobs",
+      "x": 744,
+      "y": 404,
+      "w": 192,
+      "h": 72,
+      "title": "Clean files",
+      "lane": "asset",
+      "text": "Cleared files, stored by the SHA-256 of their content, so identical files are stored once. A file reaches here only by an atomic move after a clean verdict.",
+      "points": [
+        "Deleting the last asset that uses a blob removes the blob."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/FileAssetStore.cs"
+      ],
+      "tests": [
+        "DownloadTests",
+        "HousekeepingTests"
+      ]
+    },
+    {
+      "id": "db-audit",
+      "x": 984,
+      "y": 404,
+      "w": 192,
+      "h": 72,
+      "title": "Audit log",
+      "lane": "admin",
+      "text": "Who did what to what, and when. Database triggers refuse any update or delete of a row, so history cannot be rewritten through this service.",
+      "points": [
+        "Written in the same transaction as the action it records.",
+        "The test-only reset erases records but keeps the audit log."
+      ],
+      "code": [
+        "src/Lateral.Cms/Persistence/AuditExtensions.cs",
+        "src/Lateral.Cms/Persistence/Migrations/20261106151459_Assets.cs"
+      ],
+      "tests": [
+        "HardeningTests"
+      ]
+    },
+    {
+      "id": "w-batch",
+      "x": 24,
+      "y": 534,
+      "w": 192,
+      "h": 64,
+      "title": "Batch worker",
+      "lane": "ingest",
+      "text": "A background worker that takes the oldest due batch and applies each event with a pure function: an event changes the stored state only if it sorts after it. The result does not depend on arrival order.",
+      "points": [
+        "Replays and old versions are ignored, not applied twice.",
+        "Same version with different content: a deterministic winner, flagged as a conflict.",
+        "On failure it retries with back-off, then sets the batch aside; a poisoned batch never blocks the ones behind it.",
+        "A takedown (unpublish or delete) batch is retried forever, never set aside: the item stays visible until it applies, so it must apply."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/BatchWorker.cs",
+        "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+        "src/Lateral.Cms/Domain/Reducer.cs"
+      ],
+      "tests": [
+        "ReducerTests",
+        "ReducerPropertyTests",
+        "InboxWorkerTests"
+      ]
+    },
+    {
+      "id": "w-scan",
+      "x": 744,
+      "y": 534,
+      "w": 192,
+      "h": 64,
+      "title": "Scan worker",
+      "lane": "asset",
+      "text": "Scans quarantined files outside the write lock, then in one transaction records the verdict. Clean: atomic move into the blob store. Infected or suspicious: wipe and keep only the verdict.",
+      "points": [
+        "Fails closed: a scanner error or timeout leaves the file quarantined, retries with back-off, then sets it aside (still unserved).",
+        "The scanner sits behind an interface: a real engine such as ClamAV replaces the mock without changing the pipeline.",
+        "The mock is not malware protection; it proves the pipeline."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetWorkers.cs",
+        "src/Lateral.Cms/Assets/ScanProcessor.cs",
+        "src/Lateral.Cms/Assets/MockAssetScanner.cs"
+      ],
+      "tests": [
+        "ScanPipelineTests",
+        "ScannerTests"
+      ]
+    },
+    {
+      "id": "w-sweep",
+      "x": 984,
+      "y": 534,
+      "w": 192,
+      "h": 64,
+      "title": "Sweeper",
+      "lane": "asset",
+      "text": "Housekeeping: abandoned multipart uploads expire, and files no row accounts for (stray parts, temp files, orphan blobs) are removed after a grace period.",
+      "points": [
+        "It never takes a young file or one that is accounted for."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetWorkers.cs"
+      ],
+      "tests": [
+        "HousekeepingTests"
+      ]
+    },
+    {
+      "id": "cross",
+      "x": 24,
+      "y": 636,
+      "w": 1152,
+      "h": 44,
+      "title": "Everywhere: structured logs (never payloads or passwords) · metrics (queue depth, oldest age, failed bytes) · correlation ids · every call repeatable as curl",
+      "lane": "store",
+      "text": "What lets an operator trust and debug the service.",
+      "points": [
+        "Logs carry batch ids, counts and reason codes, never a payload, a password or an Authorization header.",
+        "Metrics include the queue depth and the age of the oldest waiting batch: a queue that quietly falls behind is the main risk of asynchronous processing."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/CmsMetrics.cs",
+        "src/Lateral.Cms/Ingestion/IngestionLog.cs"
+      ],
+      "tests": [
+        "ObservabilityTests"
+      ]
+    }
+  ],
+  "walks": [
+    {
+      "id": "event",
+      "title": "An event arrives",
+      "steps": [
+        {
+          "nodes": [
+            "cms"
+          ],
+          "text": "The CMS publishes, unpublishes or deletes something and POSTs a batch of events to the webhook."
+        },
+        {
+          "nodes": [
+            "r-webhook"
+          ],
+          "text": "The webhook checks who is calling (only the CMS account may) and the declared size, before reading any of the body."
+        },
+        {
+          "nodes": [
+            "s-accept"
+          ],
+          "text": "Each event is validated on its own with a stable reason code, and the payload is checksummed in a canonical form."
+        },
+        {
+          "nodes": [
+            "db-queue"
+          ],
+          "text": "The whole batch and every accepted event are stored in one transaction. Only then does the CMS get its answer: 202, with where to follow it."
+        },
+        {
+          "nodes": [
+            "w-batch"
+          ],
+          "text": "A background worker takes the batch and applies each event with a pure function. Replays, old versions and late events change nothing."
+        },
+        {
+          "nodes": [
+            "db-entities"
+          ],
+          "text": "The record's latest state (or a tombstone, for a delete) is written in the same transaction that marks the batch completed."
+        },
+        {
+          "nodes": [
+            "users",
+            "r-read",
+            "s-read"
+          ],
+          "text": "Later, a user reads the record. What they may see is decided by their role: users see published and enabled records; admins see everything."
+        }
+      ]
+    },
+    {
+      "id": "file",
+      "title": "A file arrives",
+      "steps": [
+        {
+          "nodes": [
+            "cms",
+            "r-upload"
+          ],
+          "text": "The CMS uploads a file: one PUT, or multipart parts sent in parallel. Each part can carry a SHA-256 that is checked."
+        },
+        {
+          "nodes": [
+            "s-intake"
+          ],
+          "text": "The bytes are streamed to disk, never held in memory. Sizes, checksums and the quota are checked."
+        },
+        {
+          "nodes": [
+            "disk-quarantine"
+          ],
+          "text": "The file waits in quarantine. Nothing here can be downloaded: a user asking for it gets the same 404 as for a file that does not exist."
+        },
+        {
+          "nodes": [
+            "w-scan"
+          ],
+          "text": "The scan worker asks the scanner. If it errors or times out the file stays quarantined and is retried: fail closed."
+        },
+        {
+          "nodes": [
+            "disk-blobs"
+          ],
+          "text": "Clean: the file is moved atomically into the content-addressed store. Infected: wiped, and only the verdict is kept."
+        },
+        {
+          "nodes": [
+            "users",
+            "r-download",
+            "s-serve"
+          ],
+          "text": "Only now can a user download it, with byte ranges, so many ranges of a big file can be fetched in parallel and a download resumed."
+        }
+      ]
+    },
+    {
+      "id": "admin",
+      "title": "An admin steps in",
+      "steps": [
+        {
+          "nodes": [
+            "admins",
+            "r-admin"
+          ],
+          "text": "An admin signs in. Admin routes are closed to every other role."
+        },
+        {
+          "nodes": [
+            "s-admin"
+          ],
+          "text": "They hide a record, requeue a failed batch, re-scan an asset or delete one. Each action does one thing and checks its own preconditions."
+        },
+        {
+          "nodes": [
+            "db-audit"
+          ],
+          "text": "Every action is recorded in the audit log in the same transaction as the change. The log cannot be updated or deleted through this service."
+        }
+      ]
+    }
+  ]
+}

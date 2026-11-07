@@ -156,6 +156,12 @@ public static class AssetEndpoints
             return NotFound();
         }
 
+        // A range in a unit other than bytes is not understood, so it is ignored and the whole file is sent (RFC 9110, 14.2).
+        if (http.Request.Headers.Range.ToString() is { Length: > 0 } range && !range.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
+        {
+            http.Request.Headers.Remove("Range");
+        }
+
         // Whatever these bytes are, they are only ever a download: never rendered, sniffed or framed.
         http.Response.Headers.ContentSecurityPolicy = "default-src 'none'; sandbox";
         return Results.File(

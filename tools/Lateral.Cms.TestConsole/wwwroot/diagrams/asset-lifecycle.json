@@ -1,0 +1,163 @@
+{
+  "id": "asset-lifecycle",
+  "title": "The life of an asset",
+  "width": 1180,
+  "height": 470,
+  "nodes": [
+    {
+      "id": "uploading",
+      "x": 24,
+      "y": 90,
+      "w": 190,
+      "h": 80,
+      "title": "uploading",
+      "lane": "asset",
+      "text": "A multipart upload in progress: parts are on disk and can be re-sent. Not yet an asset. It expires if abandoned, and the sweeper removes its parts.",
+      "points": [],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetService.cs"
+      ],
+      "tests": [
+        "UploadTests",
+        "HousekeepingTests"
+      ]
+    },
+    {
+      "id": "quarantined",
+      "x": 374,
+      "y": 90,
+      "w": 220,
+      "h": 80,
+      "title": "quarantined",
+      "lane": "ingest",
+      "text": "Every asset starts here, whether it came in one PUT or in parts. It cannot be downloaded: asking for it gets the same 404 as for a file that does not exist.",
+      "points": [
+        "The scan runs outside the write lock, so a slow scan never holds up ingestion."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/ScanProcessor.cs"
+      ],
+      "tests": [
+        "ScanPipelineTests"
+      ]
+    },
+    {
+      "id": "clean",
+      "x": 730,
+      "y": 40,
+      "w": 220,
+      "h": 80,
+      "title": "clean",
+      "lane": "asset",
+      "text": "The scanner cleared it. The file was moved atomically into the blob store and is now served with byte ranges. Its ETag is its SHA-256.",
+      "points": [
+        "The verdict, the scanner version and the time are recorded, so a later signature update can re-queue old assets."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/AssetEndpoints.cs"
+      ],
+      "tests": [
+        "DownloadTests"
+      ]
+    },
+    {
+      "id": "rejected",
+      "x": 730,
+      "y": 190,
+      "w": 220,
+      "h": 80,
+      "title": "rejected",
+      "lane": "bad",
+      "text": "The scanner flagged it (a signature, a disguised executable, active content in an SVG, a zip bomb…). The bytes are overwritten and removed; only the verdict, the checksum and the times remain.",
+      "points": [
+        "Never served, to anyone."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/MockAssetScanner.cs"
+      ],
+      "tests": [
+        "ScannerTests"
+      ]
+    },
+    {
+      "id": "failed",
+      "x": 374,
+      "y": 280,
+      "w": 220,
+      "h": 80,
+      "title": "set aside",
+      "lane": "admin",
+      "text": "The scanner kept erroring or timing out. Failing closed means the file stays unserved. It is set aside so it stops consuming attempts, and an admin can requeue it once the cause is fixed.",
+      "points": [],
+      "code": [
+        "src/Lateral.Cms/Assets/ScanProcessor.cs"
+      ],
+      "tests": [
+        "ScanPipelineTests"
+      ]
+    },
+    {
+      "id": "deleted",
+      "x": 990,
+      "y": 115,
+      "w": 170,
+      "h": 80,
+      "title": "deleted",
+      "lane": "store",
+      "text": "An admin deleted it. The row goes, the bytes are overwritten with zeros even while a reader has them open, then removed. Identical content survives until the last asset using it is deleted.",
+      "points": [
+        "Best effort on SSDs and copy-on-write filesystems; snapshots are out of scope."
+      ],
+      "code": [
+        "src/Lateral.Cms/Assets/FileAssetStore.cs"
+      ],
+      "tests": [
+        "HousekeepingTests"
+      ]
+    }
+  ],
+  "walks": [
+    {
+      "id": "states",
+      "title": "Follow a file",
+      "steps": [
+        {
+          "nodes": [
+            "uploading"
+          ],
+          "text": "A large file is sent as parts, in parallel. Nothing is an asset yet."
+        },
+        {
+          "nodes": [
+            "quarantined"
+          ],
+          "text": "Complete (or a single PUT) creates the asset in quarantine: on disk, never served."
+        },
+        {
+          "nodes": [
+            "clean"
+          ],
+          "text": "Clean: moved into the blob store and served with byte ranges."
+        },
+        {
+          "nodes": [
+            "rejected"
+          ],
+          "text": "Flagged: wiped. Only the verdict survives."
+        },
+        {
+          "nodes": [
+            "failed"
+          ],
+          "text": "If the scanner itself keeps failing, the file is set aside, unserved, until an admin requeues it."
+        },
+        {
+          "nodes": [
+            "deleted"
+          ],
+          "text": "An admin can delete any asset for good."
+        }
+      ]
+    }
+  ]
+}

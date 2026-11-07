@@ -203,6 +203,8 @@ const Library = (() => {
     } catch (error) {
       before.forEach((entity) => setEntity(entity));
       notify();
+      // Taken back; but if the reason is that someone else got there first, what is shown is out of date as well: read it again.
+      if (/changed this photo first/.test(error.message)) setTimeout(() => load(), 0);
       throw error;
     } finally {
       state.pending--;
@@ -378,6 +380,7 @@ const Uploads = (() => {
   const notify = () => watchers.forEach((fn) => fn());
   let running = 0;
   let serial = 0;
+  const beingAdded = new Set(); // checksums of pictures on their way in, so the same picture dropped twice at once is added once
 
   function make(source, name) {
     const item = { uid: ++serial, name, source, status: 'queued', note: 'Waiting', progress: 0, preview: null, photoId: null, kind: 'upload' };
@@ -443,7 +446,13 @@ const Uploads = (() => {
     const sha256 = await sha256Hex(buffer);
     const twin = [...Library.photos.values()].find((p) => p.sha256 === sha256);
     if (twin) return set(item, { status: 'duplicate', note: twin.trashedAt ? 'Already in your trash' : 'Already in your library', photoId: twin.id });
+    if (beingAdded.has(sha256)) return set(item, { status: 'duplicate', note: 'The same picture is already being added' });
 
+    beingAdded.add(sha256);
+    try { await ingest(item, file, type, buffer, sha256); } finally { beingAdded.delete(sha256); }
+  }
+
+  async function ingest(item, file, type, buffer, sha256) {
     const exif = type === 'image/jpeg' ? readExif(buffer.slice(0, 256 * 1024)) : {};
     const takenAt = exif.takenAt ?? (file.lastModified ? new Date(file.lastModified) : new Date());
 

@@ -211,7 +211,8 @@ function tileFor(photo) {
         onclick: (event) => { event.stopPropagation(); toggleSelect(photo.id, event.shiftKey); },
       }, icon('circle', 22), icon('check', 22)),
       el('span', { class: 'tile-star', 'aria-hidden': 'true' }, icon('starFilled', 18)));
-    tile.style.setProperty('--ar', (photo.width / photo.height).toFixed(4));
+    // A very wide or very tall picture is cropped in the grid (the viewer shows all of it), so one panorama cannot take a whole row.
+    tile.style.setProperty('--ar', Math.min(2.4, Math.max(0.6, photo.width / photo.height)).toFixed(4));
     tile.addEventListener('click', (event) => {
       if (App.selection.size > 0) toggleSelect(photo.id, event.shiftKey);
       else openLightbox(photo.id);

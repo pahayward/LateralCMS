@@ -401,11 +401,57 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     public async Task The_script_never_turns_text_from_the_cms_into_markup(string forbidden)
     {
         // Every script either page loads: the engineering console's and the photo library's.
-        foreach (var name in new[] { "app.js", "assets.js", "photos-lib.js", "photos-store.js", "photos-app.js" })
+        foreach (var name in AllScripts)
         {
             var script = await _factory.CreateClient().GetStringAsync("/" + name);
 
             Assert.False(script.Contains(forbidden), $"{name} contains {forbidden}");
+        }
+    }
+
+    // Every script the two pages load.
+    private static readonly string[] AllScripts =
+    [
+        "eng-core.js", "eng-overview.js", "eng-design.js", "eng-records.js", "eng-events.js", "eng-assets.js", "eng-workbench.js",
+        "eng-ops.js", "eng-verify.js", "eng-start.js", "photos-lib.js", "photos-store.js", "photos-app.js",
+    ];
+
+    [Fact]
+    public async Task Every_script_a_page_loads_exists_and_every_script_that_exists_is_loaded()
+    {
+        var client = _factory.CreateClient();
+        var pages = await client.GetStringAsync("/") + await client.GetStringAsync("/engineering");
+
+        foreach (var name in AllScripts)
+        {
+            Assert.Contains($"src=\"{name}\"", pages);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/" + name)).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_diagram_opened_on_its_own_may_style_itself_but_nothing_else()
+    {
+        var response = await _factory.CreateClient().GetAsync("/diagrams/architecture.svg");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("image/svg+xml", response.Content.Headers.ContentType?.MediaType);
+        var policy = string.Join(' ', response.Headers.GetValues("Content-Security-Policy"));
+        Assert.Contains("style-src 'unsafe-inline'", policy);
+        Assert.Contains("default-src 'none'", policy);
+        Assert.DoesNotContain("script-src", policy);
+    }
+
+    [Fact]
+    public async Task The_endpoint_catalogue_and_every_diagram_data_file_are_valid_json_the_console_serves()
+    {
+        var client = _factory.CreateClient();
+
+        foreach (var path in new[] { "/endpoints.json", "/diagrams/architecture.json", "/diagrams/event-lifecycle.json", "/diagrams/asset-lifecycle.json" })
+        {
+            var text = await client.GetStringAsync(path);
+            using var document = System.Text.Json.JsonDocument.Parse(text);
+            Assert.Equal(System.Text.Json.JsonValueKind.Object, document.RootElement.ValueKind);
         }
     }
 
@@ -420,7 +466,7 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
         Assert.Contains("<title>Lateral Photos</title>", photos);
         Assert.Contains("href=\"/engineering\"", photos);
         Assert.Contains("<title>Engineering", engineering);
-        Assert.Contains("CMS test console", engineering);
+        Assert.Contains("Testing the CMS at", engineering);
         Assert.Contains("href=\"/\"", engineering);
     }
 

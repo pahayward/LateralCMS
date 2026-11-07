@@ -1,0 +1,311 @@
+{
+  "id": "event-lifecycle",
+  "title": "The life of an event",
+  "width": 1180,
+  "height": 740,
+  "nodes": [
+    {
+      "id": "p-cms",
+      "x": 80,
+      "y": 70,
+      "w": 140,
+      "h": 44,
+      "title": "The CMS",
+      "lane": "ingest",
+      "text": "",
+      "points": [],
+      "code": [],
+      "tests": []
+    },
+    {
+      "id": "p-api",
+      "x": 330,
+      "y": 70,
+      "w": 140,
+      "h": 44,
+      "title": "Service API",
+      "lane": "ingest",
+      "text": "",
+      "points": [],
+      "code": [],
+      "tests": []
+    },
+    {
+      "id": "p-db",
+      "x": 580,
+      "y": 70,
+      "w": 140,
+      "h": 44,
+      "title": "Database",
+      "lane": "store",
+      "text": "",
+      "points": [],
+      "code": [],
+      "tests": []
+    },
+    {
+      "id": "p-worker",
+      "x": 820,
+      "y": 70,
+      "w": 140,
+      "h": 44,
+      "title": "Batch worker",
+      "lane": "ingest",
+      "text": "",
+      "points": [],
+      "code": [],
+      "tests": []
+    },
+    {
+      "id": "p-reader",
+      "x": 1020,
+      "y": 70,
+      "w": 140,
+      "h": 44,
+      "title": "A reader",
+      "lane": "read",
+      "text": "",
+      "points": [],
+      "code": [],
+      "tests": []
+    },
+    {
+      "id": "e1",
+      "x": 112,
+      "y": 126,
+      "w": 326,
+      "h": 36,
+      "title": "1. The CMS posts a batch",
+      "lane": "ingest",
+      "text": "A JSON array of up to 500 events: publish, unPublish or delete, each with an id, a timestamp and (except delete) a version and payload.",
+      "points": [
+        "The declared length is checked first: over 5 MiB is a 413 before any body is read.",
+        "Only the CMS account may call this."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs"
+      ],
+      "tests": [
+        "IngestionEndpointTests"
+      ]
+    },
+    {
+      "id": "e2",
+      "x": 362,
+      "y": 186,
+      "w": 326,
+      "h": 56,
+      "title": "2. Validate, one event at a time",
+      "lane": "ingest",
+      "text": "Every event is checked on its own, so a bad one is rejected with its own reason and never spoils the rest of the batch.",
+      "points": [
+        "Stable reason codes: invalid_version, missing_id, payload_too_large, timestamp_in_future…",
+        "The payload is hashed in a canonical form, so the same content always has the same checksum."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/EventParser.cs"
+      ],
+      "tests": [
+        "EventParserTests",
+        "PayloadChecksumTests"
+      ]
+    },
+    {
+      "id": "e3",
+      "x": 362,
+      "y": 276,
+      "w": 326,
+      "h": 36,
+      "title": "3. Commit before answering",
+      "lane": "ingest",
+      "text": "The batch and every accepted event are written in a single transaction. Nothing is acknowledged until it is durably on disk.",
+      "points": [
+        "A crash before the commit leaves nothing; a crash after leaves a queued batch that the worker will find on restart."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/AcceptService.cs"
+      ],
+      "tests": [
+        "AcceptanceTests",
+        "InboxWorkerTests"
+      ]
+    },
+    {
+      "id": "e4",
+      "x": 112,
+      "y": 346,
+      "w": 326,
+      "h": 36,
+      "title": "4. Acknowledge (202)",
+      "lane": "ingest",
+      "text": "The CMS learns that its batch is safe and where to follow it (the Location header). Events that were rejected already carry their reason; accepted ones say queued.",
+      "points": [
+        "202 means stored, not applied. That is the honest answer for asynchronous processing.",
+        "The answer also carries a correlation id for support."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/IngestionEndpoints.cs"
+      ],
+      "tests": [
+        "AcceptanceTests",
+        "ObservabilityTests"
+      ]
+    },
+    {
+      "id": "e5",
+      "x": 612,
+      "y": 426,
+      "w": 316,
+      "h": 36,
+      "title": "5. The worker picks it up",
+      "lane": "ingest",
+      "text": "Soon after (a wake signal, or its next poll), the worker takes the oldest batch that is due.",
+      "points": [
+        "The pick is an index seek, so cost does not grow with the queue."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/BatchProcessor.cs"
+      ],
+      "tests": [
+        "InboxIndexTests"
+      ]
+    },
+    {
+      "id": "e6",
+      "x": 852,
+      "y": 486,
+      "w": 326,
+      "h": 56,
+      "title": "6. Decide each event",
+      "lane": "ingest",
+      "text": "For each event the reducer compares it with the stored state and decides: applied, ignored (a replay, or older than what is stored) or a conflict with a deterministic winner.",
+      "points": [
+        "The result does not depend on arrival order: the same events in any order end in the same state.",
+        "This is tested against an independent oracle on random shuffles and on every permutation of curated timelines."
+      ],
+      "code": [
+        "src/Lateral.Cms/Domain/Reducer.cs"
+      ],
+      "tests": [
+        "ReducerTests",
+        "ReducerPropertyTests"
+      ]
+    },
+    {
+      "id": "e7",
+      "x": 612,
+      "y": 566,
+      "w": 316,
+      "h": 36,
+      "title": "7. Commit the result",
+      "lane": "ingest",
+      "text": "The record's new state (or tombstone), every event's final outcome and the batch's completion are written in one transaction, so a reader can never see half a batch.",
+      "points": [
+        "If this fails, the batch is retried with back-off, then set aside after too many attempts.",
+        "Except takedowns (unpublish, delete): those are retried forever, because the item stays visible until they apply."
+      ],
+      "code": [
+        "src/Lateral.Cms/Ingestion/BatchProcessor.cs"
+      ],
+      "tests": [
+        "InboxFailureTests"
+      ]
+    },
+    {
+      "id": "e8",
+      "x": 112,
+      "y": 626,
+      "w": 326,
+      "h": 36,
+      "title": "8. The CMS follows up",
+      "lane": "ingest",
+      "text": "The CMS (or an admin) can ask where its batch got to and sees each event's final outcome. Payloads are never returned here.",
+      "points": [],
+      "code": [
+        "src/Lateral.Cms/Ingestion/BatchEndpoints.cs"
+      ],
+      "tests": [
+        "AcceptanceTests"
+      ]
+    },
+    {
+      "id": "e9",
+      "x": 362,
+      "y": 666,
+      "w": 766,
+      "h": 36,
+      "title": "9. A reader sees the result",
+      "lane": "read",
+      "text": "Reads go through a separate read-only database connection. A user sees the record only if it is published and not disabled; otherwise the answer is the same 404 as for a record that never existed.",
+      "points": [],
+      "code": [
+        "src/Lateral.Cms/Entities/EntityEndpoints.cs"
+      ],
+      "tests": [
+        "EntitiesEndpointTests"
+      ]
+    }
+  ],
+  "walks": [
+    {
+      "id": "life",
+      "title": "Follow one batch",
+      "steps": [
+        {
+          "nodes": [
+            "e1"
+          ],
+          "text": "A JSON array of up to 500 events: publish, unPublish or delete, each with an id, a timestamp and (except delete) a version and payload."
+        },
+        {
+          "nodes": [
+            "e2"
+          ],
+          "text": "Every event is checked on its own, so a bad one is rejected with its own reason and never spoils the rest of the batch."
+        },
+        {
+          "nodes": [
+            "e3"
+          ],
+          "text": "The batch and every accepted event are written in a single transaction. Nothing is acknowledged until it is durably on disk."
+        },
+        {
+          "nodes": [
+            "e4"
+          ],
+          "text": "The CMS learns that its batch is safe and where to follow it (the Location header). Events that were rejected already carry their reason; accepted ones say queued."
+        },
+        {
+          "nodes": [
+            "e5"
+          ],
+          "text": "Soon after (a wake signal, or its next poll), the worker takes the oldest batch that is due."
+        },
+        {
+          "nodes": [
+            "e6"
+          ],
+          "text": "For each event the reducer compares it with the stored state and decides: applied, ignored (a replay, or older than what is stored) or a conflict with a deterministic winner."
+        },
+        {
+          "nodes": [
+            "e7"
+          ],
+          "text": "The record's new state (or tombstone), every event's final outcome and the batch's completion are written in one transaction, so a reader can never see half a batch."
+        },
+        {
+          "nodes": [
+            "e8"
+          ],
+          "text": "The CMS (or an admin) can ask where its batch got to and sees each event's final outcome. Payloads are never returned here."
+        },
+        {
+          "nodes": [
+            "e9"
+          ],
+          "text": "Reads go through a separate read-only database connection. A user sees the record only if it is published and not disabled; otherwise the answer is the same 404 as for a record that never existed."
+        }
+      ]
+    }
+  ]
+}

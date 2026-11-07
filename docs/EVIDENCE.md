@@ -5,16 +5,16 @@ a number here comes from a recorded run, never from memory. The reasoning is in 
 tests in [REQUIREMENTS](REQUIREMENTS.md).
 
 **Environment of every run below:** a Windows 11 Pro development machine with 16 logical cores, Windows 10.0.26200, .NET SDK 10.0.403 building `net9.0` and running on the 9.0.22 runtime
-(`RollForward=Major`), Node 22.22.0, 6 and 7 November 2026 (the photo library and its tests on the 7th). One machine, one person; the numbers are evidence of an order of magnitude.
+(`RollForward=Major`), Node 22.22.0, 6 to 8 November 2026. One machine, one person; the numbers are evidence of an order of magnitude.
 
 ## 1. Build and tests
 
 | Check | Command | Result |
 |---|---|---|
 | Strict build (warnings are errors, as CI) | `CI=true dotnet build Lateral.sln -c Release` | 0 warnings, 0 errors |
-| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 559 passed, 0 failed, 12 to 18 s |
-| Test console suite | `dotnet test tests/Lateral.Cms.TestConsole.Tests -c Release` | 124 passed, 0 failed |
-| Flake gate | the service suite, repeated with no rebuild | 40 of 40 passed (559 tests each, 12 to 18 s per run), no failures. Earlier gates on this code each stopped at a failure that was then traced and fixed: an error logged when the app stopped mid-way through opening a connection, a race in the Microsoft.Data.Sqlite connection pool that gave a rare HTTP 500 "database is locked" (DESIGN K21), and a scan test that raced a 400 ms timeout |
+| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 575 passed, 0 failed, 17 to 24 s |
+| Test console suite | `dotnet test tests/Lateral.Cms.TestConsole.Tests -c Release` | 127 passed, 0 failed |
+| Flake gate | the service suite, repeated with no rebuild | 20 of 20 passed (575 tests each, 17 to 24 s per run), no failures. Earlier gates each stopped at a failure that was then traced and fixed: an error logged when the app stopped mid-way through opening a connection, a race in the Microsoft.Data.Sqlite connection pool that gave a rare HTTP 500 "database is locked" (DESIGN K21), and a scan test that raced a 400 ms timeout |
 
 How the service suite is built: real HTTP pipeline (`WebApplicationFactory`) against a real SQLite file per test class, assertions
 on responses **and** on stored rows through raw SQL, a manual clock, real faults produced with database triggers (no test hooks in
@@ -24,6 +24,28 @@ restart), the read API, observability, **the asset store** (single and multipart
 orphans, hard delete, a 64 MiB streamed round trip), **the mock scanner** (every rule in memory, then end to end: clean, rejected and
 wiped, fail closed, re-scan), **the security hardening** (generated credentials, the accept limit, forwarded headers, the reset
 allow-list, the audit log), and the documentation checks. The console project covers its proxy, guards and the new asset paths.
+
+### Exploratory testing
+
+A probe written for the purpose (`tools/explore/probe.mjs`, 168 checks) was run against a throwaway instance: the webhook envelope and
+every field at and past each boundary, reconciliation under 40 concurrent writers, paging, assets (simple, multipart, ranges,
+conditional requests), headers and authentication. Reconciliation was right in every race (40 parallel versions of one id ended
+at the highest; 20 identical replays left one record at version 1; a same-version conflict picked the same winner in both
+arrival orders; an older publish could not resurrect a deleted record), and a payload with a NUL, emoji and right-to-left text
+came back byte for byte. It also found four defects, all now fixed with a test and a mutation that proves the test:
+
+| Found | Cause | Fix and proof |
+|---|---|---|
+| HTTP 500 for `?limit=abc`, `?limit=1.5`, a repeated `limit`, an unknown asset state, and a body that is not the expected JSON when starting an upload | ASP.NET throws on unreadable input in the Development environment; the exception handler turned it into a 500 (the tests ran as "Testing", where it is a 400, so none noticed) | `ThrowOnBadRequest` is switched off explicitly; `BadInputTests` runs the service as Development (SH-08, M76) |
+| A `Range` in a unit other than bytes was treated as bytes | the framework's range handling | the header is ignored and the whole file sent, as RFC 9110 requires (SH-08, M77) |
+| The same picture dropped twice at once was added twice (photo library) | the duplicate check only looked at photos already saved | a set of checksums of pictures on their way in |
+| A rare HTTP 500 `database is locked` under many parallel requests | a race in Microsoft.Data.Sqlite's connection pool, confirmed in its source | connections are opened one at a time (design limit K21, ST-03, M71) |
+
+The probe is kept as a tool: run it against any instance (never one holding data you care about; it ends by triggering the
+sign-in throttle).
+
+The first run also caught one *documentation* mistake worth recording: the JSON depth limit counts the whole request (the array and
+the event are two levels), so a payload may nest about 30 levels, not 32. The README now says so.
 
 ### Order independence
 
@@ -121,8 +143,12 @@ was not caught. "(+N more)" means N further tests also failed. Manual, not an au
 | M73 | Photos | a refused download is not asked for again | killed | `Lateral › Cms.TestConsole.Tests.MediaProxyTests.A_refused_download_because_too_many_are_running_is_asked_for_again` |
 | M74 | Photos | every picture is offered as a download | killed | `Lateral › Cms.TestConsole.Tests.MediaProxyTests.It_is_shown_in_the_page_unless_the_page_asks_for_a_download` |
 | M75 | Photos | the console API no longer needs its header (the relaxed check leaks to /api) | killed | `Lateral › Cms.TestConsole.Tests.ConsoleApiTests.A_request_without_the_console_header_is_refused_before_anything_is_proxied` |
+| M76 | Hardening | a malformed query value or body is a 500 in Development | killed | `Api › BadInputTests.Starting_an_upload_with_a_body_that_is_not_the_expected_json_is_a_400` (+2 more) |
+| M77 | Assets | a range in an unknown unit is treated as bytes | killed | `Api › BadInputTests.A_bad_range_unit_is_ignored_and_the_whole_file_is_sent` |
+| M78 | Console | the endpoint catalogue says users may post events | killed | `Delivery › EndpointCatalogueTests.The_catalogue_names_the_same_callers_as_the_role_matrix_proves` |
+| M79 | Console | the architecture diagram points at a file that does not exist | killed | `Delivery › EndpointCatalogueTests.A_diagram_describes_real_files_and_real_tests_and_every_walkthrough_step_points_at_a_real_box` |
 
-75 of 75 defects were caught.
+79 of 79 defects were caught.
 
 ## 3. Measurements
 
@@ -179,7 +205,7 @@ differences (for example the Warning run) are within noise. **No figure here is 
 |---|---|---|
 | The service runs and serves the documented flow | Started `dotnet run` on a spare port; a script posted a batch, followed it, read as user and admin, disabled, re-enabled, hard-deleted | Worked as documented |
 | The test console drives the service | Ran the console against that service in the browser pane: sent the "Publish an article" scenario, followed the batch to completion, opened the Queue tab | Worked; no browser console errors |
-| The README's try-it commands | The fenced blocks tagged `bash try-it`, extracted with the same `awk` as CI, run against the built service on a spare port | Passed (exit 0) on the final build, run on port 5190 with a fresh database: 202 with Location and X-Correlation-Id, batch followed to completed, user and admin reads, 401 and 403 checks, unpublish, re-publish, disable, hard delete, then an asset uploaded, scanned to clean and downloaded, a flagged file rejected, and three parallel ranges that reassemble to the original; no error lines in the service log |
+| The README's try-it commands | The fenced blocks tagged `bash try-it`, extracted with the same `awk` as CI, run against the built service on a spare port | Passed (exit 0) on the final build, run on a fresh throwaway instance: 202 with Location and X-Correlation-Id, batch followed to completed, user and admin reads, 401 and 403 checks, unpublish, re-publish, disable, hard delete, then an asset uploaded, scanned to clean and downloaded, a flagged file rejected, and three parallel ranges that reassemble to the original; no error lines in the service log |
 | The test console's Assets tab | Ran the console and the service in the browser pane: uploaded a clean text file, a file with the mock signature, an SVG with a script, an executable named .png, a scanner-error file, and a 24 MiB picture (3 parts in parallel); downloaded the picture as a user with 8 parallel ranges and the hash matched; the CMS account got 403; the rejected files were 404 and wiped; the scanner-error file ended set aside | Worked as described; the admin list showed every verdict |
 | Dependency audit | `dotnet list package --vulnerable --include-transitive` over the solution | No vulnerable packages in any project (the CI job fails if that changes) |
 | Generated development credentials | Started the service in Development with no credentials supplied: it wrote the git-ignored file, the console found all three accounts, `git check-ignore` confirmed the file is ignored | Worked |
@@ -196,7 +222,7 @@ differences (for example the Warning run) are within noise. **No figure here is 
 | **Development passwords already in git history** | The first commit contains the old development passwords. They are no longer used, but history was not rewritten |
 | **Visual Studio launch profile** (`Lateral.slnLaunch`, `.vsconfig`) | Copied from the first build; not opened in Visual Studio here |
 | **S3 comparison and generated diagrams** | Not ported from the first build; the design diagram in DESIGN is hand-drawn text |
-| **Size budget** (brief section 4.9: about 2,500 production lines, tests at most 4,000) | Production: 5,523 raw lines (47 files, migrations excluded), **4,053 excluding blanks and comments: over the 2,500 budget**, because the asset store, scanner and hardening work were added after the budget was set (the core without them stayed near 2,300). Service tests: 8,152 raw, **6,379 excluding blanks and comments: over the 4,000 budget**, for the same reason. The budget is a guard against sprawl, so this is reported rather than hidden. Measured on 6 and 7 November 2026 (the photo library and its tests on the 7th) |
+| **Size budget** (brief section 4.9: about 2,500 production lines, tests at most 4,000) | Production: 5,523 raw lines (47 files, migrations excluded), **4,053 excluding blanks and comments: over the 2,500 budget**, because the asset store, scanner and hardening work were added after the budget was set (the core without them stayed near 2,300). Service tests: 8,152 raw, **6,379 excluding blanks and comments: over the 4,000 budget**, for the same reason. The budget is a guard against sprawl, so this is reported rather than hidden. Measured on 6 to 8 November 2026 |
 | **Throughput, capacity, soak** | One machine, a few minutes: an order of magnitude only (limit K2) |
 | **Erasure beyond the live file** | Backups, replicas, WAL archives and snapshots are out of scope (limit K6) |
 | **Ordering outside the assumption** | Known and pinned, not fixed (section 6 of DESIGN) |

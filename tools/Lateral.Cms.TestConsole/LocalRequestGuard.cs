@@ -61,6 +61,12 @@ public static class LocalRequestGuard
             headers.ContentSecurityPolicy =
                 "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data: blob:; " +
                 "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+            // A diagram is an SVG document that styles itself; opened on its own it needs that, and nothing else (no script, no loading).
+            if (context.Request.Path.Value?.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+            }
+
             headers.XContentTypeOptions = "nosniff";
             headers["Referrer-Policy"] = "no-referrer";
             if (context.Request.Path.StartsWithSegments("/api"))
