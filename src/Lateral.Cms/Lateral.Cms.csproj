@@ -12,4 +12,8 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Admin/settings.json" LogicalName="settings.json" />
+  </ItemGroup>
+
 </Project>

@@ -132,10 +132,10 @@
     const body = el('div', { class: 'col' });
     const draw = () => {
       fill(body);
-      if (rec.tab === 'record') body.append(...recordTab(entity));
+      if (rec.tab === 'record') body.append(...recordTab(entity).filter(Boolean));
       else if (rec.tab === 'visibility') body.append(visibilityBlock(entity.id));
-      else if (rec.tab === 'request') body.append(...requestTab(entity));
-      else body.append(...actionsTab(entity));
+      else if (rec.tab === 'request') body.append(...requestTab(entity).filter(Boolean));
+      else body.append(...actionsTab(entity).filter(Boolean));
     };
 
     const strip = el('div', { class: 'tabs', role: 'tablist' }, tabs.map(([key, label]) => el('button', {

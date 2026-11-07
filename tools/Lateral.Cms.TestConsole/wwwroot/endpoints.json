@@ -5,6 +5,7 @@
     { "id": "events", "title": "Events in", "blurb": "How the CMS tells this service what changed." },
     { "id": "records", "title": "Records out", "blurb": "What users and admins read." },
     { "id": "assets", "title": "Assets", "blurb": "Files: upload, scan, download." },
+    { "id": "accounts", "title": "Accounts", "blurb": "Who can sign in, and how." },
     { "id": "ops", "title": "Operations", "blurb": "Health, the queue and test-only tools." }
   ],
   "endpoints": [
@@ -403,6 +404,197 @@
         "403": "Admins only."
       },
       "view": "ops"
+    },
+    {
+      "id": "login",
+      "route": "POST /api/auth/login",
+      "area": "accounts",
+      "title": "Sign in",
+      "who": ["cms", "user", "admin", "anonymous"],
+      "what": "Exchange a username and password for a session cookie (HttpOnly, SameSite=Strict). The CMS service account cannot start a session. A wrong password, an unknown name and a disabled account all get the same 401. Failed sign-ins are throttled per address and per username.",
+      "body": { "kind": "json", "note": "The person's username and password.", "example": { "username": "someone@example.com", "password": "their password" } },
+      "responses": {
+        "200": "Signed in: the cookie is set, and the body says who you are, your role and whether you must choose a new password first.",
+        "400": "No username or no password was sent.",
+        "401": "The username or password is not right (or the account is disabled).",
+        "429": "Too many failed sign-ins from this address or against this username. Retry-After says when to try again."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "logout",
+      "route": "POST /api/auth/logout",
+      "area": "accounts",
+      "title": "Sign out",
+      "who": ["cms", "user", "admin"],
+      "what": "End this browser's session. A session cookie can only change something if the request carries an X-Requested-With header, so a hostile page cannot sign you out.",
+      "responses": {
+        "204": "Signed out.",
+        "401": "Not signed in, or a session request without the X-Requested-With header.",
+        "403": "Refused."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "me",
+      "route": "GET /api/auth/me",
+      "area": "accounts",
+      "title": "Who am I?",
+      "who": ["cms", "user", "admin"],
+      "what": "The name, role and source (database or configuration) of the caller, whether it came by session or Basic credentials, and whether a new password must be chosen before anything else is allowed.",
+      "responses": {
+        "200": "The caller.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Refused."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "change-password",
+      "route": "POST /api/auth/password",
+      "area": "accounts",
+      "title": "Change my password",
+      "who": ["cms", "user", "admin"],
+      "what": "Prove the current password and choose a new one (12 to 128 characters, not your name, not a common password). Your other sessions end; this one carries on. The only thing a person with a temporary password may do besides look at who they are.",
+      "body": { "kind": "json", "note": "The current and the new password.", "example": { "current": "the temporary or old password", "newPassword": "a new long password" } },
+      "responses": {
+        "200": "Changed.",
+        "400": "The current password is wrong, or the new one is too weak or the same.",
+        "409": "This account is defined in configuration, so its password is changed there.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Refused."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-list",
+      "route": "GET /api/admin/users",
+      "area": "accounts",
+      "title": "List people",
+      "who": ["admin"],
+      "what": "Everyone who can sign in: the people in the database (with when they last signed in) and the accounts defined in configuration, which are read-only here. Never any password or hash.",
+      "responses": {
+        "200": "The people.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-create",
+      "route": "POST /api/admin/users",
+      "area": "accounts",
+      "title": "Add a person",
+      "who": ["admin"],
+      "what": "Create a person with a role of User or Admin. Send a password to choose it, or none to have the service make a temporary one, returned once, which they must replace at their first sign-in. Audited.",
+      "body": { "kind": "json", "note": "Username, role, and optionally a password.", "example": { "username": "alex@example.com", "role": "User" } },
+      "responses": {
+        "201": "Created. A generated temporary password is in the body, once.",
+        "400": "The username, role or password is not acceptable.",
+        "409": "That username is taken (names are compared without regard to case, and the CMS and configured accounts count).",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-update",
+      "route": "PATCH /api/admin/users/{username}",
+      "area": "accounts",
+      "title": "Change a role or disable a person",
+      "who": ["admin"],
+      "what": "Set a person's role, or disable or re-enable them. Disabling ends their sessions at once. The last enabled administrator and your own account cannot be disabled or demoted. Audited.",
+      "params": [{ "name": "username", "about": "The person's username.", "context": "username" }],
+      "body": { "kind": "json", "note": "role, disabled, or both.", "example": { "disabled": true } },
+      "responses": {
+        "200": "The person as they are now.",
+        "400": "Neither a role nor disabled was sent, or the role is not User or Admin.",
+        "404": "No such person.",
+        "409": "That would remove the last enabled administrator, or you are changing yourself.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-password",
+      "route": "POST /api/admin/users/{username}/password",
+      "area": "accounts",
+      "title": "Reset a person's password",
+      "who": ["admin"],
+      "what": "Choose a password for someone who has forgotten theirs, or send none to have a temporary one made and returned once. Every session they had ends. A temporary password must be replaced at their next sign-in. Audited.",
+      "params": [{ "name": "username", "about": "The person's username.", "context": "username" }],
+      "body": { "kind": "json", "note": "An empty object makes a temporary password; send password to choose one.", "example": {} },
+      "responses": {
+        "200": "Done. A generated temporary password is in the body, once.",
+        "400": "The password is too weak.",
+        "404": "No such person.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-revoke",
+      "route": "POST /api/admin/users/{username}/revoke-sessions",
+      "area": "accounts",
+      "title": "Sign a person out everywhere",
+      "who": ["admin"],
+      "what": "End every session and remembered sign-in the person has without changing their password. Audited.",
+      "params": [{ "name": "username", "about": "The person's username.", "context": "username" }],
+      "responses": {
+        "200": "Done.",
+        "404": "No such person.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "users-delete",
+      "route": "DELETE /api/admin/users/{username}",
+      "area": "accounts",
+      "title": "Delete a person",
+      "who": ["admin"],
+      "what": "Remove a person. The last enabled administrator and your own account cannot be deleted. The audit log keeps what they did. Audited.",
+      "params": [{ "name": "username", "about": "The person's username.", "context": "username" }],
+      "danger": true,
+      "responses": {
+        "204": "Deleted.",
+        "404": "No such person.",
+        "409": "That would remove the last enabled administrator, or you are deleting yourself.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "accounts"
+    },
+    {
+      "id": "settings",
+      "route": "GET /api/admin/settings",
+      "area": "ops",
+      "title": "Show the configuration",
+      "who": ["admin"],
+      "what": "Every setting the service reads: its value now, its default, where the value came from, the environment variable that sets it and what it is for. Secrets are reported only as set or not set.",
+      "responses": {
+        "200": "The settings, in groups.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "settings"
+    },
+    {
+      "id": "storage",
+      "route": "GET /api/admin/storage",
+      "area": "ops",
+      "title": "Show where data is kept",
+      "who": ["admin"],
+      "what": "Where the database, asset store and session keys are, how big they are, how much room the disks have, how much of the quota is used, what to back up and where logs go. No credentials.",
+      "responses": {
+        "200": "The report.",
+        "401": "No credentials, or wrong ones.",
+        "403": "Admins only."
+      },
+      "view": "settings"
     },
     {
       "id": "health",

@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -19,11 +20,11 @@ public sealed class BasicAuthenticationHandler(
     private const string RetryAfterItem = "Lateral.Auth.RetryAfter";
     private static readonly UTF8Encoding StrictUtf8 = new(false, throwOnInvalidBytes: true);
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(HeaderNames.Authorization, out var header))
         {
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         if (!AuthenticationHeaderValue.TryParse(header.ToString(), out var parsed)
@@ -31,31 +32,36 @@ public sealed class BasicAuthenticationHandler(
             || string.IsNullOrEmpty(parsed.Parameter))
         {
             // Some other scheme, or an empty credential: we have nothing to authenticate.
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
         }
 
         var client = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         if (throttle.IsBlocked(client, out var retryAfter))
         {
             Context.Items[RetryAfterItem] = retryAfter;
-            return Task.FromResult(AuthenticateResult.Fail("Too many failed attempts."));
+            return AuthenticateResult.Fail("Too many failed attempts.");
         }
 
+        ClaimsPrincipal? principal = null;
         if (!TryDecode(parsed.Parameter, out var username, out var password)
-            || credentials.Validate(username, password) is not { } principal)
+            || (principal = await credentials.ValidateAsync(username, password, Context.RequestAborted)) is null)
         {
             throttle.RecordFailure(client);
             // The username is deliberately not logged: it is attacker-controlled text.
             Logger.LogWarning("Basic authentication failed for {Method} {Path} from {Client}", Request.Method, Request.Path, client);
-            return Task.FromResult(AuthenticateResult.Fail("Invalid credentials."));
+            return AuthenticateResult.Fail("Invalid credentials.");
         }
 
-        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));
+        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        Response.Headers.WWWAuthenticate = $"{SchemeName} realm=\"Lateral CMS\", charset=\"UTF-8\"";
+        // A page with its own sign-in form must not get the browser's native password box on top of it.
+        if (!Request.Headers.ContainsKey(AccountClaims.ClientHeader))
+        {
+            Response.Headers.WWWAuthenticate = $"{SchemeName} realm=\"Lateral CMS\", charset=\"UTF-8\"";
+        }
 
         if (Context.Items.TryGetValue(RetryAfterItem, out var value) && value is TimeSpan retryAfter)
         {

@@ -1305,5 +1305,180 @@
     "failed": [
       "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.An_item_is_met_only_when_every_requirement_it_cites_is_done_and_anything_less_says_what_is_missing"
     ]
+  },
+  {
+    "id": "M82",
+    "area": "Accounts",
+    "rule": "a session survives a password change or a new security stamp",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "if (person is null || person.Disabled || person.Stamp.ToString() != principal.FindFirst(AccountClaims.Stamp)?.Value)",
+    "replace": "if (person is null || person.Disabled)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_person_changes_their_own_password_keeps_their_session_and_loses_every_other",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_change_made_straight_in_the_database_ends_a_remembered_sign_in",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.An_administrator_resetting_a_password_signs_the_person_out_everywhere",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.Revoking_sessions_signs_out_a_browser_but_keeps_the_password",
+      "Lateral.Cms.Tests.Auth.AdminCliTests.A_person_can_be_created_listed_promoted_disabled_signed_out_and_deleted_from_the_command_line"
+    ]
+  },
+  {
+    "id": "M83",
+    "area": "Accounts",
+    "rule": "a temporary password is not forced to be replaced",
+    "file": "src/Lateral.Cms/Auth/CredentialStore.cs",
+    "find": "if (person.MustChangePassword)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Auth.AdminCliTests.A_generated_password_is_printed_once_and_must_be_replaced_at_the_next_sign_in",
+      "Lateral.Cms.Tests.Auth.FirstRunTests.The_first_administrator_is_made_with_a_temporary_password_that_is_in_a_file_and_not_in_the_log_and_goes_when_it_is_replaced",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_temporary_password_must_be_replaced_before_anything_else_is_allowed"
+    ]
+  },
+  {
+    "id": "M84",
+    "area": "Accounts",
+    "rule": "the last enabled administrator can be disabled",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (disabled && row.Role == Roles.Admin && await OtherEnabledAdminsAsync(db, row.Id, ct) == 0)",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AccountGuardTests.The_last_enabled_administrator_cannot_be_removed_disabled_or_demoted_and_you_cannot_remove_yourself"
+    ]
+  },
+  {
+    "id": "M85",
+    "area": "Accounts",
+    "rule": "the first-run password is written to the log",
+    "file": "src/Lateral.Cms/Auth/AccountEndpoints.cs",
+    "find": "username, file.Path);",
+    "replace": "username, file.Path + \" \" + password);",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.FirstRunTests.The_first_administrator_is_made_with_a_temporary_password_that_is_in_a_file_and_not_in_the_log_and_goes_when_it_is_replaced"
+    ]
+  },
+  {
+    "id": "M86",
+    "area": "Accounts",
+    "rule": "a session can change things without the header a hostile page cannot add",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "&& !http.Request.Headers.ContainsKey(AccountClaims.ClientHeader))",
+    "replace": "&& false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_session_cannot_be_used_to_write_without_the_header_a_hostile_page_cannot_add"
+    ]
+  },
+  {
+    "id": "M87",
+    "area": "Accounts",
+    "rule": "a remembered Basic sign-in still works after the account is disabled",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (person is { Disabled: false } && person.Stamp == known.Stamp)",
+    "replace": "if (person is not null)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_change_made_straight_in_the_database_ends_a_remembered_sign_in",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M88",
+    "area": "Accounts",
+    "rule": "the settings report shows secrets",
+    "file": "src/Lateral.Cms/Admin/SettingsReport.cs",
+    "find": "object? shown = setting.Secret ?",
+    "replace": "object? shown = false ?",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Api.SettingsAndStorageTests.Secrets_are_reported_only_as_set_or_not_set"
+    ]
+  },
+  {
+    "id": "M89",
+    "area": "Accounts",
+    "rule": "a setting the service reads has no description",
+    "file": "src/Lateral.Cms/Admin/settings.json",
+    "find": "{ \"key\": \"Api:MaxPageSize\", \"group\": \"reading\", \"description\": \"Largest page a caller may ask for.\" },",
+    "replace": "",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Api.SettingsAndStorageTests.Every_setting_the_service_reads_is_described_and_nothing_is_described_that_it_does_not_read",
+      "Lateral.Cms.Tests.Api.SettingsAndStorageTests.The_report_gives_each_setting_its_value_default_source_and_environment_variable"
+    ]
+  },
+  {
+    "id": "M90",
+    "area": "Accounts",
+    "rule": "the CMS service account can start a browser session",
+    "file": "src/Lateral.Cms/Auth/AccountEndpoints.cs",
+    "find": "if (configured is not null && !configured.IsInRole(Roles.CmsIngest))",
+    "replace": "if (configured is not null)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AccountApiTests.The_service_account_cannot_sign_in_to_a_session_and_a_configured_person_can_but_not_change_their_password"
+    ]
+  },
+  {
+    "id": "M91",
+    "area": "Accounts",
+    "rule": "a role change does not reach a session that is already open",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "context.ReplacePrincipal(AccountClaims.Principal(person, AuthExtensions.SessionScheme));",
+    "replace": "_ = person;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_role_change_applies_to_a_session_already_open",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M92",
+    "area": "Accounts",
+    "rule": "the command-line tool audits as an ordinary user, not as the operator",
+    "file": "src/Lateral.Cms/Admin/AdminCli.cs",
+    "find": "var actor = $\"cli:{Environment.UserName}\";",
+    "replace": "var actor = Environment.UserName;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Auth.AdminCliTests.A_person_can_be_created_listed_promoted_disabled_signed_out_and_deleted_from_the_command_line"
+    ]
+  },
+  {
+    "id": "M93",
+    "area": "Accounts",
+    "rule": "a person can change their password without knowing the current one",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (!PasswordHasher.Verify(current ?? \"\", actor.PasswordHash, int.MaxValue, out _))",
+    "replace": "if (false)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Auth.AccountApiTests.A_person_changes_their_own_password_keeps_their_session_and_loses_every_other",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
   }
 ]

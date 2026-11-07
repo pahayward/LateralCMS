@@ -7,7 +7,7 @@ namespace Lateral.Cms.TestConsole;
 public static class CmsTarget
 {
     private static readonly string[] AllowedPrefixes =
-        ["cms/events", "cms/batches", "cms/assets", "api/entities", "api/assets", "api/admin/reset", "api/admin/ingestion", "api/admin/assets", "health"];
+        ["cms/events", "cms/batches", "cms/assets", "api/entities", "api/assets", "api/auth", "api/admin/reset", "api/admin/ingestion", "api/admin/assets", "api/admin/users", "api/admin/settings", "api/admin/storage", "health"];
 
     public static bool TryBuild(Uri baseUri, string? path, string? query, out Uri target, out string error)
     {

@@ -650,5 +650,101 @@
     "file": "tools/Lateral.Cms.TestConsole/wwwroot/brief-trace.json",
     "find": "\"id\": \"R8.4\",\n          \"status\": \"open\"",
     "replace": "\"id\": \"R8.4\",\n          \"status\": \"met\""
+  },
+  {
+    "id": "M82",
+    "area": "Accounts",
+    "rule": "a session survives a password change or a new security stamp",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "if (person is null || person.Disabled || person.Stamp.ToString() != principal.FindFirst(AccountClaims.Stamp)?.Value)",
+    "replace": "if (person is null || person.Disabled)"
+  },
+  {
+    "id": "M83",
+    "area": "Accounts",
+    "rule": "a temporary password is not forced to be replaced",
+    "file": "src/Lateral.Cms/Auth/CredentialStore.cs",
+    "find": "if (person.MustChangePassword)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M84",
+    "area": "Accounts",
+    "rule": "the last enabled administrator can be disabled",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (disabled && row.Role == Roles.Admin && await OtherEnabledAdminsAsync(db, row.Id, ct) == 0)",
+    "replace": "if (false)"
+  },
+  {
+    "id": "M85",
+    "area": "Accounts",
+    "rule": "the first-run password is written to the log",
+    "file": "src/Lateral.Cms/Auth/AccountEndpoints.cs",
+    "find": "username, file.Path);",
+    "replace": "username, file.Path + \" \" + password);"
+  },
+  {
+    "id": "M86",
+    "area": "Accounts",
+    "rule": "a session can change things without the header a hostile page cannot add",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "&& !http.Request.Headers.ContainsKey(AccountClaims.ClientHeader))",
+    "replace": "&& false)"
+  },
+  {
+    "id": "M87",
+    "area": "Accounts",
+    "rule": "a remembered Basic sign-in still works after the account is disabled",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (person is { Disabled: false } && person.Stamp == known.Stamp)",
+    "replace": "if (person is not null)"
+  },
+  {
+    "id": "M88",
+    "area": "Accounts",
+    "rule": "the settings report shows secrets",
+    "file": "src/Lateral.Cms/Admin/SettingsReport.cs",
+    "find": "object? shown = setting.Secret ?",
+    "replace": "object? shown = false ?"
+  },
+  {
+    "id": "M89",
+    "area": "Accounts",
+    "rule": "a setting the service reads has no description",
+    "file": "src/Lateral.Cms/Admin/settings.json",
+    "find": "{ \"key\": \"Api:MaxPageSize\", \"group\": \"reading\", \"description\": \"Largest page a caller may ask for.\" },",
+    "replace": ""
+  },
+  {
+    "id": "M90",
+    "area": "Accounts",
+    "rule": "the CMS service account can start a browser session",
+    "file": "src/Lateral.Cms/Auth/AccountEndpoints.cs",
+    "find": "if (configured is not null && !configured.IsInRole(Roles.CmsIngest))",
+    "replace": "if (configured is not null)"
+  },
+  {
+    "id": "M91",
+    "area": "Accounts",
+    "rule": "a role change does not reach a session that is already open",
+    "file": "src/Lateral.Cms/Auth/AuthExtensions.cs",
+    "find": "context.ReplacePrincipal(AccountClaims.Principal(person, AuthExtensions.SessionScheme));",
+    "replace": "_ = person;"
+  },
+  {
+    "id": "M92",
+    "area": "Accounts",
+    "rule": "the command-line tool audits as an ordinary user, not as the operator",
+    "file": "src/Lateral.Cms/Admin/AdminCli.cs",
+    "find": "var actor = $\"cli:{Environment.UserName}\";",
+    "replace": "var actor = Environment.UserName;"
+  },
+  {
+    "id": "M93",
+    "area": "Accounts",
+    "rule": "a person can change their password without knowing the current one",
+    "file": "src/Lateral.Cms/Auth/AccountService.cs",
+    "find": "if (!PasswordHasher.Verify(current ?? \"\", actor.PasswordHash, int.MaxValue, out _))",
+    "replace": "if (false)"
   }
 ]

@@ -63,6 +63,25 @@ public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
         Row("POST /api/admin/assets/{id:guid}/rescan",                        unauthorized, forbidden, forbidden, conflict);
         Row("POST /api/admin/assets/{id:guid}/requeue",                       unauthorized, forbidden, forbidden, conflict);
         Row("POST /api/admin/assets/rescan-outdated",                         unauthorized, forbidden, forbidden, ok);
+
+        // Signing in, who am I, and your own password. Anyone may try to sign in (an empty body is a 400 for all); the rest need a
+        // sign-in. The accounts here are defined in configuration, so changing their password is a 409: it is done there.
+        const HttpStatusCode badRequest = HttpStatusCode.BadRequest;
+        const HttpStatusCode noContent = HttpStatusCode.NoContent;
+        Row("POST /api/auth/login",                                           badRequest,   badRequest, badRequest, badRequest);
+        Row("POST /api/auth/logout",                                          unauthorized, noContent, noContent, noContent);
+        Row("GET /api/auth/me",                                               unauthorized, ok,        ok,        ok);
+        Row("POST /api/auth/password",                                        unauthorized, conflict,  conflict,  conflict);
+
+        // People, settings and storage are for administrators. The bodies here are empty or name nobody, so "allowed" shows as 400 or 404.
+        Row("GET /api/admin/users",                                           unauthorized, forbidden, forbidden, ok);
+        Row("POST /api/admin/users",                                          unauthorized, forbidden, forbidden, badRequest);
+        Row("PATCH /api/admin/users/{username}",                              unauthorized, forbidden, forbidden, badRequest);
+        Row("POST /api/admin/users/{username}/password",                      unauthorized, forbidden, forbidden, notFound);
+        Row("POST /api/admin/users/{username}/revoke-sessions",               unauthorized, forbidden, forbidden, notFound);
+        Row("DELETE /api/admin/users/{username}",                             unauthorized, forbidden, forbidden, notFound);
+        Row("GET /api/admin/settings",                                        unauthorized, forbidden, forbidden, ok);
+        Row("GET /api/admin/storage",                                         unauthorized, forbidden, forbidden, ok);
         return data;
     }
 
@@ -108,6 +127,18 @@ public class RoleMatrixTests(CmsFactory factory) : IClassFixture<CmsFactory>
             "POST /api/admin/assets/{id:guid}/rescan" => new HttpRequestMessage(HttpMethod.Post, $"/api/admin/assets/{Guid.NewGuid()}/rescan"),
             "POST /api/admin/assets/{id:guid}/requeue" => new HttpRequestMessage(HttpMethod.Post, $"/api/admin/assets/{Guid.NewGuid()}/requeue"),
             "POST /api/admin/assets/rescan-outdated" => new HttpRequestMessage(HttpMethod.Post, "/api/admin/assets/rescan-outdated"),
+            "POST /api/auth/login" => new HttpRequestMessage(HttpMethod.Post, "/api/auth/login") { Content = Evt.Raw("{}") },
+            "POST /api/auth/logout" => new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout"),
+            "GET /api/auth/me" => new HttpRequestMessage(HttpMethod.Get, "/api/auth/me"),
+            "POST /api/auth/password" => new HttpRequestMessage(HttpMethod.Post, "/api/auth/password") { Content = Evt.Raw("{}") },
+            "GET /api/admin/users" => new HttpRequestMessage(HttpMethod.Get, "/api/admin/users"),
+            "POST /api/admin/users" => new HttpRequestMessage(HttpMethod.Post, "/api/admin/users") { Content = Evt.Raw("{}") },
+            "PATCH /api/admin/users/{username}" => new HttpRequestMessage(HttpMethod.Patch, "/api/admin/users/nobody") { Content = Evt.Raw("{}") },
+            "POST /api/admin/users/{username}/password" => new HttpRequestMessage(HttpMethod.Post, "/api/admin/users/nobody/password") { Content = Evt.Raw("{}") },
+            "POST /api/admin/users/{username}/revoke-sessions" => new HttpRequestMessage(HttpMethod.Post, "/api/admin/users/nobody/revoke-sessions"),
+            "DELETE /api/admin/users/{username}" => new HttpRequestMessage(HttpMethod.Delete, "/api/admin/users/nobody"),
+            "GET /api/admin/settings" => new HttpRequestMessage(HttpMethod.Get, "/api/admin/settings"),
+            "GET /api/admin/storage" => new HttpRequestMessage(HttpMethod.Get, "/api/admin/storage"),
             _ => throw new ArgumentOutOfRangeException(nameof(endpoint)),
         };
 

@@ -426,3 +426,22 @@ table.trace details summary, .card details summary { color: var(--muted); font-s
 button.chip { border: 0; cursor: pointer; font-family: inherit; }
 button.chip:hover { filter: brightness(0.95); text-decoration: underline; }
 tr:target td { background: var(--accent-soft); }
+
+/* People and settings */
+.fields { display: grid; gap: 10px; }
+.fields label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.fields input, .fields select, .people select { padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+.secret-box { display: grid; gap: 6px; }
+.secret { padding: 4px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); font: 600 15px var(--mono); letter-spacing: 0.04em; user-select: all; }
+table.people td, table.settings td { vertical-align: top; }
+table.settings { table-layout: fixed; }
+table.settings th:nth-child(1) { width: 38%; }
+table.settings th:nth-child(2) { width: 18%; }
+table.settings th:nth-child(3) { width: 10%; }
+table.settings th:nth-child(4) { width: 16%; }
+table.settings .chip { white-space: normal; }
+table.settings td { overflow-wrap: anywhere; }
+code.muted { color: var(--muted); }
+.row.between { justify-content: space-between; }
+.search { min-width: 220px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
+.step-no { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 6px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 13px; }

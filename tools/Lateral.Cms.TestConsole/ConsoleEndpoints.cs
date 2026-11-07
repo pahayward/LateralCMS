@@ -141,7 +141,11 @@ public static class ConsoleEndpoints
             {
                 if (ForwardedResponseHeaders.Contains(header.Key, StringComparer.OrdinalIgnoreCase))
                 {
-                    context.Response.Headers[header.Key] = header.Value.ToArray();
+                    // A 401 that carries WWW-Authenticate makes the browser put up its own username and password box over the
+                    // page, even for a fetch (the guided tour and the security checks make deliberately unauthenticated calls). So
+                    // the challenge is passed on under another name: the page can still show it, and the browser ignores it.
+                    var name = header.Key.Equals("WWW-Authenticate", StringComparison.OrdinalIgnoreCase) ? "X-Upstream-WWW-Authenticate" : header.Key;
+                    context.Response.Headers[name] = header.Value.ToArray();
                 }
             }
 

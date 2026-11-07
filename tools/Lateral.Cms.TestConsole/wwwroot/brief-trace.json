@@ -487,6 +487,88 @@
         "where": ["tools/Lateral.Cms.TestConsole/wwwroot/endpoints.json", "tools/diagrams/build.mjs"],
         "reqs": ["DX-01"],
         "live": { "view": "overview", "label": "Start at the overview" }
+      },
+      {
+        "id": "X13",
+        "status": "partly",
+        "quote": "Login system, user admin, what's the admin password?, change the admin password & method to reset when on ssh",
+        "how": "People now live in the database with salted PBKDF2 hashes. They sign in with a session cookie (or Basic credentials for scripts); an administrator adds, disables, re-roles, resets and deletes them in the engineering console; a temporary password must be replaced before anything else is allowed; a fresh install makes one administrator whose temporary password is in a private file, not the log; and the operator can reset any password over SSH with dotnet Lateral.Cms.dll admin set-password, with the service running or stopped.",
+        "gap": "The photo library and the engineering console still act as fixed accounts read from a settings file, and only run in the Development environment on the loopback address, so they have no sign-in page of their own. People sign in to the CMS itself (session or Basic), and the administrator manages them in the engineering console.",
+        "where": [
+          "src/Lateral.Cms/Auth/AccountService.cs",
+          "src/Lateral.Cms/Auth/AccountEndpoints.cs",
+          "src/Lateral.Cms/Auth/PasswordHasher.cs",
+          "src/Lateral.Cms/Admin/AdminCli.cs",
+          "tools/Lateral.Cms.TestConsole/wwwroot/eng-accounts.js"
+        ],
+        "reqs": [
+          "AC-01",
+          "AC-02",
+          "AC-03",
+          "AC-04",
+          "AC-05",
+          "AC-06",
+          "AC-07",
+          "AC-08"
+        ],
+        "live": {
+          "view": "accounts",
+          "label": "Open People and sign-in"
+        }
+      },
+      {
+        "id": "X14",
+        "status": "met",
+        "quote": "config options available in engineering / admin side",
+        "how": "The administrator can read every setting the service has, with its value now, its default, whether it came from a file, an environment variable or the command line, the environment variable that sets it and what it is for. Secrets show only as set or not set. It is read-only on purpose: the service reads its configuration at start-up, so the page writes the lines to paste into the settings file or environment instead. A test fails if a setting exists without a description.",
+        "where": [
+          "src/Lateral.Cms/Admin/SettingsReport.cs",
+          "src/Lateral.Cms/Admin/settings.json",
+          "tools/Lateral.Cms.TestConsole/wwwroot/eng-settings.js"
+        ],
+        "reqs": [
+          "CF-01"
+        ],
+        "live": {
+          "view": "settings",
+          "label": "Open Settings and storage"
+        }
+      },
+      {
+        "id": "X15",
+        "status": "partly",
+        "quote": "where stuff is gonna get stored - storage options",
+        "how": "A page and an endpoint say where everything is kept (one SQLite file, one folder of asset bytes, the session keys, and logs on standard output), how big each is, how much room the disks have, how much of the quota is used and what to back up. The paths are settings (Database:ConnectionString, Assets:Root, Assets:MaxBytes).",
+        "gap": "There is one storage option for each: SQLite for records and the local file system for assets. The asset store is behind an interface so an S3-compatible backend could replace it, but none is built, and there is no built-in backup command.",
+        "where": [
+          "src/Lateral.Cms/Admin/StorageReport.cs",
+          "src/Lateral.Cms/Assets/FileAssetStore.cs"
+        ],
+        "reqs": [
+          "CF-02"
+        ],
+        "live": {
+          "view": "settings",
+          "params": "storage",
+          "label": "See where data is kept"
+        }
+      },
+      {
+        "id": "X16",
+        "status": "partly",
+        "quote": "Assume I will put this into production and serve it as an app in it's own use on my home lab.",
+        "how": "The CMS service is set up for it: no committed or default password, a first-run administrator, accounts and sessions, an SSH recovery command, visible settings and storage, a Production mode that refuses the reset route, and a written home-server guide (install folder, environment file, systemd unit, reverse proxy, backups, upgrades). The first-run, sign-in, forced password change and SSH reset steps were run for real against a Production-mode service on a spare port.",
+        "gap": "Only run on Windows. The Linux and systemd steps are written but have not been run, and nothing has been run behind a reverse proxy with HTTPS. The photo library and engineering console are still a development tool (loopback only, fixed accounts), not something to put in front of the household.",
+        "where": [
+          "docs/OPERATIONS.md",
+          "src/Lateral.Cms/Program.cs"
+        ],
+        "reqs": [],
+        "live": {
+          "view": "settings",
+          "params": "home",
+          "label": "Read the home-server guide"
+        }
       }
     ]
   }

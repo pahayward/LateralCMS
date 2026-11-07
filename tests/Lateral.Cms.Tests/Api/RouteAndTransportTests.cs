@@ -24,12 +24,20 @@ public class RouteAndTransportTests(CmsFactory factory) : IClassFixture<CmsFacto
         // Anything added later that can write must be named here, on purpose, and justified in the design.
         Assert.Equal(
             [
+                "DELETE /api/admin/users/{username}",
                 "DELETE /api/assets/{id:guid}",
                 "DELETE /cms/assets/uploads/{uploadId:guid}",
+                "PATCH /api/admin/users/{username}",
                 "POST /api/admin/assets/rescan-outdated",
                 "POST /api/admin/assets/{id:guid}/requeue",
                 "POST /api/admin/assets/{id:guid}/rescan",
                 "POST /api/admin/ingestion/{batchId:guid}/requeue",
+                "POST /api/admin/users",
+                "POST /api/admin/users/{username}/password",
+                "POST /api/admin/users/{username}/revoke-sessions",
+                "POST /api/auth/login",
+                "POST /api/auth/logout",
+                "POST /api/auth/password",
                 "POST /api/entities/{id}/disable",
                 "POST /api/entities/{id}/enable",
                 "POST /cms/assets/uploads",

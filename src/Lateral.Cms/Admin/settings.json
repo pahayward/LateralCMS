@@ -1,0 +1,87 @@
+{
+  "groups": [
+    { "id": "server", "title": "Server", "about": "Where the service listens, who may address it and how it logs. These are host settings, not options of this service." },
+    { "id": "accounts", "title": "Accounts and sign-in", "about": "The CMS service account lives here in configuration; people live in the database and are managed under Users." },
+    { "id": "storage", "title": "Where data is kept", "about": "The database file and the folder for asset bytes. Back both up." },
+    { "id": "ingestion", "title": "Receiving events", "about": "Limits applied to POST /cms/events before anything is stored." },
+    { "id": "queue", "title": "The queue and its worker", "about": "How accepted batches wait, retry and are set aside." },
+    { "id": "assets", "title": "Asset store", "about": "Uploads, downloads and the disk quota." },
+    { "id": "scanner", "title": "Content scanner", "about": "Every upload is scanned before it can be served. Only the mock scanner is built in." },
+    { "id": "reading", "title": "Reading the API", "about": "Paging for GET /api/entities." },
+    { "id": "admin", "title": "Administration", "about": "The test-only reset." },
+    { "id": "proxy", "title": "Reverse proxy", "about": "Name the proxies in front of the service so the client address, and therefore the sign-in throttle, is right." }
+  ],
+  "settings": [
+    { "key": "Urls", "group": "server", "kind": "host", "env": "ASPNETCORE_URLS", "description": "Addresses the service listens on, separated by semicolons. Bind to a private address or put a reverse proxy in front: the service speaks plain HTTP and sends passwords with every Basic request.", "example": "http://127.0.0.1:5080" },
+    { "key": "AllowedHosts", "group": "server", "kind": "host", "description": "Host names the service answers to (the Host header). Set to your real name in production instead of *.", "example": "photos.home.lan" },
+    { "key": "Logging:LogLevel:Default", "group": "server", "kind": "host", "description": "How much is logged: Trace, Debug, Information, Warning, Error. Logs are JSON lines on standard output; no payloads, passwords or credentials are ever written." },
+    { "key": "Logging:Console:FormatterName", "group": "server", "kind": "host", "description": "Log format on standard output. json suits journald and log shippers; simple is easier to read by eye." },
+
+    { "key": "Auth:Cms:Username", "group": "accounts", "description": "Username of the CMS service account, 10 to 20 characters. It may call /cms/events and the asset upload routes and nothing else." },
+    { "key": "Auth:Cms:Passwords", "group": "accounts", "secret": true, "description": "One or more GUIDs the CMS may use as its password. Put the new one in alongside the old, switch the CMS over, then remove the old: rotation without downtime. Make one with: dotnet Lateral.Cms.dll admin new-service-secret", "env": "Auth__Cms__Passwords__0" },
+    { "key": "Auth:Users", "group": "accounts", "secret": true, "description": "Accounts defined in configuration (Username, Password, Role). For development and demos. In production leave this empty and manage people under Users: configured accounts hold their password in clear text and cannot be changed or disabled while the service runs.", "env": "Auth__Users__0__Username" },
+    { "key": "Auth:MaxFailuresPerMinute", "group": "accounts", "description": "Failed sign-ins from one address, or against one username, per minute before further attempts get 429 until the minute passes. 0 turns the brake off." },
+    { "key": "Auth:PasswordHashIterations", "group": "accounts", "description": "PBKDF2 work factor for new password hashes. 600000 is the current guidance and takes about a tenth of a second. A hash made with fewer is upgraded at the person's next sign-in. Values under 100000 are for tests only." },
+    { "key": "Auth:SessionHours", "group": "accounts", "description": "How long a browser session lasts with no activity. Each request renews it." },
+    { "key": "Auth:UserCacheSeconds", "group": "accounts", "description": "How long a person's record is trusted before it is read again. A change made through the API applies at once; one made with the command-line tool applies within this time." },
+    { "key": "Auth:VerifiedCredentialCacheMinutes", "group": "accounts", "description": "How long a correct Basic username and password is remembered so scripts do not pay for a slow hash on each request. Disabling the account or changing the password ends it at once. 0 turns it off." },
+    { "key": "Auth:KeysPath", "group": "accounts", "description": "Folder for the keys that sign session cookies, so a restart does not sign everyone out. Default: a keys folder beside the database. Keep it private to the service account and back it up with the database." },
+    { "key": "Auth:BootstrapAdminUsername", "group": "accounts", "description": "Username of the administrator created on first run when nobody can sign in. Its temporary password is written to initial-admin-password.txt beside the database, not to the log." },
+
+    { "key": "Database:ConnectionString", "group": "storage", "description": "SQLite connection string for the writer. A relative path is resolved against the content root. For a service, point it at a folder outside the install, for example Data Source=/var/lib/lateral/cms.db.", "example": "Data Source=/var/lib/lateral/cms.db" },
+    { "key": "Database:ReadConnectionString", "group": "storage", "description": "Optional separate connection string for the read side. Empty means the same file, opened read-only." },
+    { "key": "Database:ApplyMigrationsOnStartup", "group": "storage", "description": "Create and upgrade the database when the service starts. Leave on for a single instance; turn off only if you run migrations yourself." },
+    { "key": "Assets:Root", "group": "storage", "description": "Folder for asset bytes: blobs (clean, by checksum), quarantine (waiting for the scan) and parts (multipart uploads in flight). A relative path is resolved against the content root. Put it on the disk with room.", "example": "/mnt/storage/lateral-assets" },
+    { "key": "Assets:MaxBytes", "group": "storage", "description": "Most bytes the asset store may hold, counting every asset that is not rejected and the parts in flight. Beyond it uploads get 429 and nothing is stored. Set below the free space on the volume." },
+
+    { "key": "Ingestion:MaxBodyBytes", "group": "ingestion", "description": "Largest request body, judged by its declared length before any of it is read (413 beyond it)." },
+    { "key": "Ingestion:MaxBatchSize", "group": "ingestion", "description": "Most events in one batch." },
+    { "key": "Ingestion:MaxPayloadBytes", "group": "ingestion", "description": "Largest canonical payload of one event." },
+    { "key": "Ingestion:MaxConcurrentAccepts", "group": "ingestion", "description": "Batches being read and validated at once. Each can hold up to MaxBodyBytes in memory, so this bounds the memory a burst of senders can use." },
+    { "key": "Ingestion:AcceptQueueLimit", "group": "ingestion", "description": "Senders allowed to wait for a place; more get 429." },
+    { "key": "Ingestion:MaxJsonDepth", "group": "ingestion", "description": "Deepest JSON nesting accepted." },
+    { "key": "Ingestion:MaxFutureSkew", "group": "ingestion", "description": "Events stamped further in the future than this are rejected, so one bogus timestamp cannot outrank every later event." },
+    { "key": "Ingestion:ChecksumAlgorithm", "group": "ingestion", "description": "sha256 (default) or md5, for payload checksums computed from now on. Stored values name their own algorithm." },
+
+    { "key": "Inbox:WorkerEnabled", "group": "queue", "description": "Runs the background worker that applies accepted batches. Off only for tests: with it off, batches wait." },
+    { "key": "Inbox:PollInterval", "group": "queue", "description": "How long an idle worker sleeps before looking again. A new batch wakes it at once." },
+    { "key": "Inbox:MaxAttempts", "group": "queue", "description": "Attempts before a batch is set aside as failed. A batch holding an unPublish or delete is never set aside." },
+    { "key": "Inbox:RetryBaseDelay", "group": "queue", "description": "Wait before the second attempt; it doubles each time up to RetryMaxDelay." },
+    { "key": "Inbox:RetryMaxDelay", "group": "queue", "description": "Longest wait between attempts." },
+    { "key": "Inbox:FaultDelay", "group": "queue", "description": "How long the worker backs off after an unexpected error such as the database being unreachable." },
+    { "key": "Inbox:MaxBytes", "group": "queue", "description": "Most payload bytes the queue may hold. A batch that would exceed it gets 429 and nothing is stored." },
+
+    { "key": "Assets:MaxSimpleBytes", "group": "assets", "description": "Largest object one PUT may carry. Bigger ones go through a multipart upload." },
+    { "key": "Assets:MaxObjectBytes", "group": "assets", "description": "Largest object of any kind." },
+    { "key": "Assets:MinPartBytes", "group": "assets", "description": "Smallest part of a multipart upload except the last." },
+    { "key": "Assets:MaxPartBytes", "group": "assets", "description": "Largest part of a multipart upload." },
+    { "key": "Assets:MaxParts", "group": "assets", "description": "Most parts in one multipart upload." },
+    { "key": "Assets:UploadTtl", "group": "assets", "description": "How long an unfinished multipart upload is kept before the sweeper removes it." },
+    { "key": "Assets:MaxConcurrentDownloadsPerCaller", "group": "assets", "description": "Downloads one caller may have open at once; more get 429." },
+    { "key": "Assets:WorkerEnabled", "group": "assets", "description": "Runs the scan worker and the sweeper. Off only for tests: with it off, uploads stay quarantined." },
+    { "key": "Assets:SweepInterval", "group": "assets", "description": "How often the sweeper looks for expired uploads and orphan files." },
+    { "key": "Assets:SweepGrace", "group": "assets", "description": "Files younger than this are never treated as orphans." },
+
+    { "key": "Assets:Scanner", "group": "scanner", "description": "Which scanner to use. Mock is the only one built in; a real engine is another implementation of the scanner interface." },
+    { "key": "Assets:ScanPollInterval", "group": "scanner", "description": "How long an idle scan worker sleeps before looking again." },
+    { "key": "Assets:ScanMaxAttempts", "group": "scanner", "description": "Scan attempts before an asset is set aside for an administrator. It stays unserved either way." },
+    { "key": "Assets:ScanRetryBaseDelay", "group": "scanner", "description": "Wait before the second scan attempt; it doubles up to ScanRetryMaxDelay." },
+    { "key": "Assets:ScanRetryMaxDelay", "group": "scanner", "description": "Longest wait between scan attempts." },
+    { "key": "Assets:ScanTimeout", "group": "scanner", "description": "A scan longer than this counts as a failed attempt. It never counts as clean." },
+    { "key": "Assets:Mock:EnableFailureMarkers", "group": "scanner", "description": "Lets the content MOCK-SCAN-ERROR or MOCK-SCAN-TIMEOUT make the scanner fail, to exercise fail-closed handling. Leave off in production." },
+    { "key": "Assets:Mock:DetectEicar", "group": "scanner", "description": "Treat the industry EICAR test file as malware. Off by default because antivirus on a workstation deletes the file." },
+    { "key": "Assets:Mock:AllowExecutables", "group": "scanner", "description": "A bare executable is flagged as malware unless this is on." },
+    { "key": "Assets:Mock:MaxExpandedBytes", "group": "scanner", "description": "Largest total uncompressed size an archive may declare." },
+    { "key": "Assets:Mock:MaxCompressionRatio", "group": "scanner", "description": "Largest ratio of uncompressed to compressed size an archive may declare (archive bombs)." },
+    { "key": "Assets:Mock:MaxArchiveEntries", "group": "scanner", "description": "Most entries an archive may have." },
+
+    { "key": "Api:DefaultPageSize", "group": "reading", "description": "Entities returned per page when the caller does not say." },
+    { "key": "Api:MaxPageSize", "group": "reading", "description": "Largest page a caller may ask for." },
+
+    { "key": "Admin:AllowReset", "group": "admin", "description": "Maps POST /api/admin/reset, which erases all data. Refused at startup in Production. Never for a real installation." },
+    { "key": "Admin:ResetAllowedEnvironment", "group": "admin", "description": "Outside Development the reset also needs the environment named here on purpose." },
+
+    { "key": "Proxy:KnownProxies", "group": "proxy", "description": "Addresses of trusted reverse proxies. Their X-Forwarded-For and X-Forwarded-Proto are believed; with none named the headers are ignored.", "example": "127.0.0.1" },
+    { "key": "Proxy:KnownNetworks", "group": "proxy", "description": "Trusted proxy networks in CIDR form.", "example": "10.0.0.0/8" }
+  ]
+}

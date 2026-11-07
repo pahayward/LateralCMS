@@ -16,7 +16,7 @@ namespace Lateral.Cms.Tests.Delivery;
 [Trait("req", "DX-01")]
 public class EndpointCatalogueTests(CmsFactory factory) : IClassFixture<CmsFactory>
 {
-    private static readonly string[] Views = ["overview", "records", "events", "assets", "ops", "verify", "workbench", "design"];
+    private static readonly string[] Views = ["overview", "records", "events", "assets", "ops", "verify", "workbench", "design", "accounts", "settings"];
 
     private sealed record Entry(string Id, string Route, string Area, string[] Who, string View, bool Optional, string[] Statuses, bool HasWhat);
 

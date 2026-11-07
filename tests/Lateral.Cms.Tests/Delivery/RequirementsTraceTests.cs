@@ -14,7 +14,7 @@ namespace Lateral.Cms.Tests.Delivery;
 public partial class RequirementsTraceTests
 {
     private static readonly string Root = DomainArchitectureTests.RepositoryRoot();
-    private static readonly string[] Views = ["overview", "records", "events", "assets", "ops", "verify", "workbench", "design", "requirements"];
+    private static readonly string[] Views = ["overview", "records", "events", "assets", "ops", "verify", "workbench", "design", "requirements", "accounts", "settings"];
 
     private sealed record Row(string Id, string Status, string Mutations, string Tests);
 

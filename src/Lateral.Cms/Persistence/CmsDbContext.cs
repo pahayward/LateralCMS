@@ -27,6 +27,8 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
 
     public DbSet<AuditRow> AuditLog => Set<AuditRow>();
 
+    public DbSet<UserRow> Users => Set<UserRow>();
+
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
         // SQLite has no timezone-aware type and hands back DateTimeKind.Unspecified. Everything stored is UTC, so
@@ -135,6 +137,17 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
             part.ToTable("UploadParts");
             part.HasKey(p => new { p.UploadId, p.PartNumber });
             part.Property(p => p.Sha256).HasMaxLength(64).IsRequired();
+        });
+
+        modelBuilder.Entity<UserRow>(user =>
+        {
+            user.ToTable("Users", table =>
+                table.HasCheckConstraint("CK_Users_Role", "\"Role\" IN ('User', 'Admin')"));
+            user.HasKey(u => u.Id);
+            user.Property(u => u.Username).HasMaxLength(100).IsRequired().UseCollation("NOCASE");
+            user.Property(u => u.Role).HasMaxLength(16).IsRequired();
+            user.Property(u => u.PasswordHash).HasMaxLength(200).IsRequired();
+            user.HasIndex(u => u.Username).IsUnique();
         });
 
         modelBuilder.Entity<AuditRow>(audit =>

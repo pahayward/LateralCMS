@@ -59,6 +59,9 @@ public class CmsFactory : WebApplicationFactory<Program>
     /// <summary>Where this factory's asset bytes live (its own folder, removed on dispose).</summary>
     public string AssetsPath => _databasePath + "-assets";
 
+    /// <summary>Where this factory keeps the keys that sign session cookies (removed on dispose).</summary>
+    public string KeysPath => _databasePath + "-keys";
+
     /// <summary>Whether the real asset scan worker and sweeper run. Off by default; tests drive the processors themselves.</summary>
     protected virtual bool AssetWorkerEnabled => false;
 
@@ -67,6 +70,9 @@ public class CmsFactory : WebApplicationFactory<Program>
 
     /// <summary>The hosting environment. Most tests run as "Testing"; a few need the behaviour of "Development" (which has its own defaults).</summary>
     protected virtual string EnvironmentName => "Testing";
+
+    /// <summary>Whether the user and admin test accounts are defined in configuration. A fresh install has none, and makes its first administrator itself.</summary>
+    protected virtual bool ConfiguredUsers => true;
 
     /// <summary>Extra or overriding configuration for a specific test class.</summary>
     protected virtual IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [];
@@ -81,14 +87,12 @@ public class CmsFactory : WebApplicationFactory<Program>
             ["Auth:Cms:Username"] = CmsUser,
             ["Auth:Cms:Passwords:0"] = CmsPassword,
             ["Auth:Cms:Passwords:1"] = CmsRotatedPassword,
-            ["Auth:Users:0:Username"] = UserName,
-            ["Auth:Users:0:Password"] = UserPassword,
-            ["Auth:Users:0:Role"] = "User",
-            ["Auth:Users:1:Username"] = AdminName,
-            ["Auth:Users:1:Password"] = AdminPassword,
-            ["Auth:Users:1:Role"] = "Admin",
             // Many tests deliberately fail to sign in; the throttle has its own dedicated tests.
             ["Auth:MaxFailuresPerMinute"] = "0",
+            // Fast hashes and no record cache: tests change accounts and look straight away, and must not wait on a slow hash.
+            ["Auth:PasswordHashIterations"] = "1000",
+            ["Auth:UserCacheSeconds"] = "0",
+            ["Auth:KeysPath"] = KeysPath,
             ["Assets:Root"] = AssetsPath,
             ["Assets:WorkerEnabled"] = AssetWorkerEnabled ? "true" : "false",
             ["Inbox:WorkerEnabled"] = WorkerEnabled ? "true" : "false",
@@ -98,6 +102,16 @@ public class CmsFactory : WebApplicationFactory<Program>
             ["Inbox:RetryMaxDelay"] = "00:01:00",
             ["Inbox:MaxAttempts"] = "3",
         };
+        if (ConfiguredUsers)
+        {
+            settings["Auth:Users:0:Username"] = UserName;
+            settings["Auth:Users:0:Password"] = UserPassword;
+            settings["Auth:Users:0:Role"] = "User";
+            settings["Auth:Users:1:Username"] = AdminName;
+            settings["Auth:Users:1:Password"] = AdminPassword;
+            settings["Auth:Users:1:Role"] = "Admin";
+        }
+
         foreach (var (key, value) in ExtraSettings)
         {
             settings[key] = value;
@@ -306,6 +320,11 @@ public class CmsFactory : WebApplicationFactory<Program>
 
         try
         {
+            if (Directory.Exists(KeysPath))
+            {
+                Directory.Delete(KeysPath, recursive: true);
+            }
+
             if (Directory.Exists(AssetsPath))
             {
                 Directory.Delete(AssetsPath, recursive: true);

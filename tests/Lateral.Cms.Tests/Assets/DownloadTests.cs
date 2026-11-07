@@ -198,6 +198,8 @@ public sealed class LargeAssetFactory : AssetFactory
         new("Assets:MaxPartBytes", "16777216"),
         new("Assets:MaxObjectBytes", "268435456"),
         new("Assets:MaxBytes", "536870912"),
+        // The base factory scans against a 400 ms limit so the timeout path is quick to test; reading 64 MiB takes longer than that on a busy disk.
+        new("Assets:ScanTimeout", "00:00:30"),
     ];
 }
 

@@ -1,4 +1,11 @@
-# Lateral CMS ingestion service
+# Lateral CMS
+
+**A webhook in, a read API out, and a store that always ends up in the right state.**
+
+![Lateral Photos, a sample application that keeps everything in the CMS](docs/images/photos-timeline.png)
+
+<sub>Lateral Photos, the sample application: every photo is a record in the CMS and every picture a scanned asset. All the
+screenshots in this file are taken from a running copy by <code>node tools/screenshots/capture.mjs</code>.</sub>
 
 A .NET 9 service that receives a CMS's `publish`, `unPublish` and `delete` events in batches, reconciles them into the
 latest state of each entity whatever order they arrive in, and serves that state through an authenticated, role-filtered
@@ -9,7 +16,64 @@ answers `202` with a link to follow it. A background worker then applies each ba
 changes state if it sorts after what is stored, so replays do nothing and late or duplicated events cannot undo newer
 ones. Users read published entities; admins read everything and can disable an entity locally without touching the CMS.
 
-**Contents:** [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
+## At a glance
+
+- **Correct under bad delivery.** Events can arrive late, twice or out of order and the end state is the same, checked against
+  an independent oracle on 20,000 shuffled timelines a run.
+- **Durable first.** A `202` means the batch is safely stored; a crash loses nothing the CMS was told was delivered.
+- **Files as well as records.** Streamed uploads, S3-style multipart, ranged parallel downloads, and nothing served until a
+  scanner has said it is clean.
+- **Confidential by default.** Deny by default, three roles, hashed passwords, sessions, an audit log, and no payload or
+  password ever in a log.
+- **Made to be run at home.** A first-run administrator, an SSH command that resets any password, every setting and storage
+  path on view, and a [home-server guide](docs/OPERATIONS.md).
+- **Proven, not claimed.** 684 service tests and 134 console tests; 93 deliberate defects planted one at a time and each caught
+  by a test ([evidence](docs/EVIDENCE.md)); every original requirement traced to how it was met, including the ones that were not.
+
+## See it
+
+All of this is the real application running against a real service. Start it with the commands under [Run it](#run-it) and
+open <http://localhost:5100>.
+
+### Lateral Photos, the sample application
+
+| ![Albums in Lateral Photos](docs/images/photos-albums.png) | ![The photo viewer](docs/images/photos-photo.png) |
+|---|---|
+| **Albums.** An album is a record in the CMS; membership is a list on each photo. | **The viewer.** Arrow keys to move, **i** for details. Large originals come down as parallel ranges and are checked against their SHA-256. |
+
+### The engineering console
+
+A second tab, for testing the service by hand and for explaining it. Every call it makes is shown as curl.
+
+| ![The guided tour running against the live service](docs/images/tour.png) | ![The architecture diagram](docs/images/architecture.png) |
+|---|---|
+| **A guided tour** that walks one record through its life (publish, apply, read as three callers, replay out of order, unpublish, delete) against the real service. | **Architecture,** with clickable boxes and walkthroughs. The diagrams are generated, and a test fails if one points at a file or test that does not exist. |
+
+| ![One record in the records explorer](docs/images/record.png) | ![The asset store](docs/images/assets.png) |
+|---|---|
+| **Records.** Drill into one: its payload, the files it points at, a checksum check, and who can see it. | **Assets.** Upload, watch the scanner decide, download in parallel ranges, administer what is stored. |
+
+| ![Building and sending a batch of events](docs/images/events.png) | ![The who-can-do-what matrix](docs/images/security.png) |
+|---|---|
+| **Send events.** Pick a scenario or build a batch, see it as curl, send it, and watch it go from accepted to applied. | **Security and limits.** Every endpoint as every kind of caller, a validation suite, and oversized-body probes. |
+
+**Requirements.** The original brief word for word beside how each item was met, with the tests and live checks that prove it.
+Anything not fully met says so.
+
+![The requirements page](docs/images/requirements.png)
+
+### Running it for real
+
+| ![People and sign-in](docs/images/people.png) | ![Settings](docs/images/settings.png) |
+|---|---|
+| **People and sign-in.** Add, disable, re-role and reset people; check a sign-in; and how to get back in over SSH. | **Settings.** Every setting the service reads, with its value, default, where it came from and what it is for. Secrets show only as set or not set. |
+
+| ![Storage](docs/images/storage.png) | ![The home-server guide](docs/images/home-server.png) |
+|---|---|
+| **Storage.** Where the database, assets and keys are, how big and how full, and what to back up. | **Home server.** Install, configure, reverse proxy, first sign-in, back up, upgrade. |
+
+
+**Contents:** [See it](#see-it) · [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Accounts](#accounts-sign-in-and-the-operator-command) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
 [Tests](#tests) · [Configuration](#configuration) · [Outside Development](#running-outside-development) ·
 [Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Docs](#docs)
 
@@ -198,6 +262,8 @@ with a click (shift for a range), open the viewer (arrow keys, **i** for details
 month, year, file name, camera or album, move to trash and restore, delete forever, and download originals. *Behind the
 scenes* (the `<>` button) shows what the CMS holds and every call the page made.
 
+![Favourites in Lateral Photos](docs/images/photos-favourites.png)
+
 How it uses the CMS:
 
 | In the app | In the CMS |
@@ -235,6 +301,8 @@ dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console o
 | **Assets** | Upload (one `PUT`, or parallel multipart parts), watch the scanner decide, download in parallel ranges and verify the hash, and administer what is stored |
 | **Send events** | Build a batch from a scenario, the form or by editing the JSON, see it as curl, send it as any caller and watch it go from accepted to applied |
 | **API workbench** | Every endpoint, editable (path, query, headers, body, caller), shown as curl, PowerShell or raw HTTP, sent, with the response explained and the obvious next call offered. It remembers the last ids it saw |
+| **People and sign-in** | Add, disable, re-role, reset and delete people (a temporary password is shown once), check a sign-in, and how to get back in over SSH |
+| **Settings and storage** | Every setting the CMS reads with its value, default, source and purpose; where the database, assets and keys are kept, how big and how full; and a step-by-step guide to running it at home |
 | **Queue and admin** | Live queue depth, oldest wait and a trend line; failed batches with requeue; re-scan of assets cleared by an older scanner; the test-only erase (only while `Admin:AllowReset` is on, which is refused in Production) |
 | **Security and limits** | Who may do what (every endpoint as every caller), a validation suite (one event per rule, at and past each boundary, with the exact reason each must give), sign-in edge cases, and what happens to an oversized body |
 
@@ -276,6 +344,36 @@ boundary, reconciliation under concurrent writers, assets and ranges, headers an
 throwaway instance, never one with data you care about; its header says how. The engineering console's **Security and
 limits** page runs the auth matrix and a validation suite live, and its **API workbench** shows any call as curl.
 
+## Accounts, sign-in and the operator command
+
+![People and sign-in in the engineering console](docs/images/people.png)
+
+People who sign in live in the database (a salted PBKDF2 hash of the password, never the password). They use the API with a
+session cookie (`POST /api/auth/login`) or with Basic credentials, and an administrator manages them in the console
+(**People and sign-in**) or at `/api/admin/users`. The CMS service account is separate and stays in configuration.
+
+- **First run.** With nobody to sign in, the service makes an administrator called `admin` with a generated temporary password,
+  written to `initial-admin-password.txt` beside the database (readable by the service account only, never logged). Signing in
+  with it makes you choose your own, and the file is deleted.
+- **In Development** the three accounts (CMS, user, admin) come from `src/Lateral.Cms/App_Data/dev-credentials.json`, which is
+  generated on first run and git-ignored; those are configuration accounts, so their passwords are changed by editing or deleting
+  that file, not through the API.
+- **Locked out, or changing the admin password from the server:** on the machine, run the operator command. It opens the same
+  database as the service, with the service stopped or running:
+
+```bash
+dotnet run --project src/Lateral.Cms -- admin list-users
+dotnet run --project src/Lateral.Cms -- admin set-password admin            # asks twice, shows nothing
+dotnet run --project src/Lateral.Cms -- admin set-password admin --generate # prints a temporary one, once
+dotnet run --project src/Lateral.Cms -- admin help
+```
+
+  (On a server, `dotnet Lateral.Cms.dll admin ...` from the install folder.) The last enabled administrator cannot be removed,
+  disabled or demoted; the tool refuses, and `set-password` on them is the way back in.
+- **Settings and storage** in the console show every setting with its value, default, source and purpose, where the database and
+  assets are kept, and how to run it at home. The full guide, with the systemd unit, reverse proxy, backups and upgrades, is
+  [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 ## Configuration
 
 Set in `appsettings.json` or as environment variables (`Ingestion__MaxBatchSize=100`). Invalid values stop startup and
@@ -287,7 +385,10 @@ name the setting.
 | `Database:ReadConnectionString` | the same file, read-only | could point at a replica |
 | `Database:ApplyMigrationsOnStartup` | `true` | |
 | `Auth:Cms:Username` / `Passwords` | none | username 10 to 20 characters; each password a GUID; several may be active to rotate |
-| `Auth:Users` | none | list of `{Username, Password (12+ chars), Role: User or Admin}` |
+| `Auth:Users` | none | for development: accounts defined in configuration (`{Username, Password (12+ chars), Role}`), read-only and in clear text. In production leave it empty: people live in the database |
+| `Auth:PasswordHashIterations` | 600000 | PBKDF2 work factor for new hashes; lower is for tests |
+| `Auth:SessionHours` / `UserCacheSeconds` / `VerifiedCredentialCacheMinutes` | 12 / 5 / 5 | idle life of a session; how long a person's record is trusted (a change made with the operator command shows within it); how long a correct Basic sign-in is remembered |
+| `Auth:KeysPath` / `BootstrapAdminUsername` | `keys` beside the database / `admin` | where session-signing keys are kept; the first-run administrator's name |
 | `Auth:MaxFailuresPerMinute` | `10` | failed sign-ins per address before `429`; `0` disables |
 | `Ingestion:MaxBodyBytes` / `MaxBatchSize` / `MaxPayloadBytes` | 5 MiB / 500 / 256 KiB | refused with `413`, `413`, and a rejected event |
 | `Ingestion:MaxJsonDepth` / `MaxFutureSkew` | 32 / 1 hour | the depth counts the whole request (the array and the event are two levels, so a payload may nest about 30) |
@@ -309,21 +410,18 @@ name the setting.
 | `Assets:ScanTimeout` / `ScanMaxAttempts` | 2 min / 5 | a scan that fails or hangs is retried (doubling delay from `ScanRetryBaseDelay` to `ScanRetryMaxDelay`), then set aside |
 | `Assets:Scanner` | `Mock` | the only built-in scanner; `Assets:Mock:*` tunes it (`EnableFailureMarkers`, `DetectEicar`, `AllowExecutables`, archive limits) |
 
+Every setting, with its current value, default, where the value came from and what it is for, is also in the console under **Settings and storage** (and at `GET /api/admin/settings`).
+
 ## Running outside Development
 
-There are no credentials in `appsettings.json`: the service refuses to start without them. Supply them as environment
-variables (or any configuration source), for example:
+There are no credentials in `appsettings.json`: the service refuses to start without the CMS account. Supply it as environment
+variables (or any configuration source). People are not configured: the first administrator is made on first run (see above).
+A home-server setup (systemd, reverse proxy, backups) is in [docs/OPERATIONS.md](docs/OPERATIONS.md). For example:
 
 ```bash
 export ASPNETCORE_ENVIRONMENT=Production
 export Auth__Cms__Username=cms-ingest-svc
 export Auth__Cms__Passwords__0=$(uuidgen)
-export Auth__Users__0__Username=reader@example.org
-export Auth__Users__0__Password='at-least-12-characters'
-export Auth__Users__0__Role=User
-export Auth__Users__1__Username=admin@example.org
-export Auth__Users__1__Password='another-long-password'
-export Auth__Users__1__Role=Admin
 export Database__ConnectionString='Data Source=/var/lib/lateral/cms.db'
 dotnet run --project src/Lateral.Cms -c Release
 ```
@@ -373,8 +471,9 @@ In order of importance (the reasoning and the next step for each is in [DESIGN](
    server database and several workers claiming batches.
 2. **Ordering holds under one assumption:** for one id, a higher version never carries an earlier timestamp, and ids are not
    reused with restarting versions. Outside it, arrival order can matter; both counterexamples are pinned by tests.
-3. **Basic auth with secrets in configuration.** Fine for this brief, not for production: use a secret store, signed
-   requests for the CMS, and TLS at the edge.
+3. **The CMS account's secret is in configuration and travels as Basic credentials.** People are hashed and have sessions, but
+   for the CMS (as the brief requires) use a secret store, signed requests and TLS at the edge. No multi-factor sign-in.
+   The photo library and engineering console are development tools (loopback only, fixed accounts, no sign-in page).
 4. **"Hard delete" covers the live database file only.** Backups, replicas and WAL archives need their own erasure policy;
    there is no encryption at rest and no retention job for the event history.
 5. **The scanner is a mock.** It proves quarantine, verdicts, wiping and fail-closed retry, but recognises only obvious test
@@ -389,6 +488,7 @@ In order of importance (the reasoning and the next step for each is in [DESIGN](
 | | |
 |---|---|
 | [docs/DESIGN.md](docs/DESIGN.md) | the decisions, the contract, the rules, the limits |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | running it at home: install, configure, sign in, recover over SSH, back up, upgrade |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | the rules the code is held to, used as a review checklist |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | every requirement, its priority and evidence, and the tests that prove it |
 | [docs/EVIDENCE.md](docs/EVIDENCE.md) | test counts, the deliberate-defect log, measurements |

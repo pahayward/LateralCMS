@@ -172,6 +172,23 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     }
 
     [Fact]
+    public async Task A_challenge_for_credentials_is_passed_on_under_another_name_so_the_browser_never_shows_its_own_password_box()
+    {
+        _factory.Cms.Respond = _ =>
+        {
+            var answer = Answer(HttpStatusCode.Unauthorized, """{"title":"Unauthorized"}""");
+            answer.Headers.Add("WWW-Authenticate", "Basic realm=\"Lateral CMS\"");
+            return answer;
+        };
+
+        var response = await _factory.Page().ProxyAsync("api/entities", "anonymous");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.False(response.Headers.Contains("WWW-Authenticate"));
+        Assert.Contains("Basic", response.Headers.GetValues("X-Upstream-WWW-Authenticate").Single());
+    }
+
+    [Fact]
     public async Task The_status_body_and_useful_headers_of_the_answer_come_back_unchanged()
     {
         _factory.Cms.Respond = _ =>
@@ -413,7 +430,7 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     private static readonly string[] AllScripts =
     [
         "eng-core.js", "eng-overview.js", "eng-design.js", "eng-requirements.js", "eng-records.js", "eng-events.js", "eng-assets.js", "eng-workbench.js",
-        "eng-ops.js", "eng-verify.js", "eng-start.js", "photos-lib.js", "photos-store.js", "photos-app.js",
+        "eng-ops.js", "eng-accounts.js", "eng-settings.js", "eng-verify.js", "eng-start.js", "photos-lib.js", "photos-store.js", "photos-app.js",
     ];
 
     [Fact]

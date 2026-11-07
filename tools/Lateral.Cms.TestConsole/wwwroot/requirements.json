@@ -12,7 +12,8 @@
     "Developer tooling",
     "Assets",
     "Content scanner",
-    "Security hardening"
+    "Security hardening",
+    "Accounts, sign-in and operating it"
   ],
   "rows": [
     {
@@ -2557,6 +2558,272 @@
         {
           "name": "RequirementsTraceTests",
           "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-01",
+      "area": "Accounts, sign-in and operating it",
+      "text": "People who sign in live in the database, not in configuration. A password is stored only as a salted PBKDF2-SHA256 hash (600000 iterations by default), never in clear text, in the log or in the audit log; a hash made with fewer iterations than the setting is upgraded at the next sign-in; a malformed stored value never matches",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 3
+        },
+        {
+          "name": "PasswordTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-02",
+      "area": "Accounts, sign-in and operating it",
+      "text": "A person signs in with a session cookie (HttpOnly, SameSite=Strict, signed with keys kept on disk so a restart does not sign anyone out) as well as with Basic credentials. A wrong password, an unknown name and a disabled account get the same answer. A session ends when the password changes, the account is disabled or its sessions are revoked, including a change made straight in the database by the command-line tool",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M82",
+        "M87",
+        "M90",
+        "M91"
+      ],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 8
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-03",
+      "area": "Accounts, sign-in and operating it",
+      "text": "A temporary password (a first-run or administrator-made one) must be replaced before anything else is allowed: every route but sign-in, sign-out, who-am-I and change-password answers 403 `password_change_required`, for a session and for Basic credentials",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M83"
+      ],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-04",
+      "area": "Accounts, sign-in and operating it",
+      "text": "An administrator creates, disables, enables, re-roles, resets (a temporary password is shown once) and deletes people. The last enabled administrator and your own account cannot be removed, disabled or demoted; a taken, malformed or weak name, role or password is refused; every change is in the audit log with the actor and no secret",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M84"
+      ],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 6
+        },
+        {
+          "name": "AccountGuardTests",
+          "count": 3
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-05",
+      "area": "Accounts, sign-in and operating it",
+      "text": "A person changes their own password by proving the current one; the new one must meet the policy (12 to 128 characters, not their name, not a common one) and differ; their other sessions end and the one they are using carries on",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M93"
+      ],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 1
+        },
+        {
+          "name": "PasswordTests",
+          "count": 2
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-06",
+      "area": "Accounts, sign-in and operating it",
+      "text": "A fresh install, with no accounts anywhere, makes one administrator with a generated temporary password written to a file beside the database (private to the service account) and not to the log; the file goes when the password is replaced; nothing is made when anybody can already sign in",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "U",
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M85"
+      ],
+      "tests": [
+        {
+          "name": "FirstRunTests",
+          "count": 3
+        },
+        {
+          "name": "PasswordTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-07",
+      "area": "Accounts, sign-in and operating it",
+      "text": "The operator can manage people from the machine (`dotnet Lateral.Cms.dll admin ...`, for example over SSH): list, create, set or generate a password, change role, disable, enable, sign out, delete, make a service secret, show where data is kept. It works with the service stopped, uses the service's own rules (including the last-administrator guard) and audits as `cli:<user>`",
+      "pri": "MUST",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "K4",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M92"
+      ],
+      "tests": [
+        {
+          "name": "AdminCliGuardTests",
+          "count": 1
+        },
+        {
+          "name": "AdminCliTests",
+          "count": 9
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "AC-08",
+      "area": "Accounts, sign-in and operating it",
+      "text": "Failed sign-ins are slowed per client address and per username (429 with `Retry-After`); a request that changes something and is authorised only by a cookie must carry a header a hostile page cannot add; a page with its own sign-in form is not given the browser's password box",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M86"
+      ],
+      "tests": [
+        {
+          "name": "AccountApiTests",
+          "count": 2
+        },
+        {
+          "name": "LoginThrottleTests",
+          "count": 1
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "CF-01",
+      "area": "Accounts, sign-in and operating it",
+      "text": "The administrator can see every setting the service reads, its value now, its default, where the value came from (file, environment variable, command line or default), the environment variable that sets it and what it is for. Secrets show only as set or not set, and a password in a connection string is hidden. A setting without a description fails a test",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M88",
+        "M89"
+      ],
+      "tests": [
+        {
+          "name": "SettingsAndStorageTests",
+          "count": 4
+        }
+      ],
+      "origin": "added"
+    },
+    {
+      "id": "CF-02",
+      "area": "Accounts, sign-in and operating it",
+      "text": "The administrator can see where the database, asset store and session keys are, how big they are, how much room the disks have, how much of the quota is used, what to back up and where logs go; the report contains no credentials",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [],
+      "tests": [
+        {
+          "name": "SettingsAndStorageTests",
+          "count": 2
         }
       ],
       "origin": "added"

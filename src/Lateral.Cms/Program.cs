@@ -12,7 +12,22 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-var builder = WebApplication.CreateBuilder(args);
+// "admin <command>" is the operator's tool, not the web service: same configuration and database, no server, and the command's
+// words are not configuration (a "--role" must not be read as a setting).
+var operatorCommand = AdminCli.IsAdminCommand(args);
+if (operatorCommand && AdminCli.RunWithoutService(args, Console.Out) is { } finished)
+{
+    // Help, or a new service secret: no configuration or database needed (a fresh install has neither yet).
+    return finished;
+}
+
+var builder = WebApplication.CreateBuilder(operatorCommand ? [] : args);
+if (operatorCommand)
+{
+    // The tool speaks for itself; the service's log lines would only get in the way. (A rule, not a minimum: the
+    // configuration's own default rule would otherwise win.)
+    builder.Logging.AddFilter(level => level >= LogLevel.Warning);
+}
 
 // Development only, and only if nothing else supplied credentials: generate them (git-ignored) instead of committing any.
 DevelopmentCredentials.AddIfDevelopment(builder);
@@ -35,6 +50,7 @@ builder.Services.AddCmsPersistence();
 builder.Services.AddCmsIngestion();
 builder.Services.AddCmsEntities();
 builder.Services.AddCmsAdmin();
+builder.Services.AddCmsAdminInfo();
 builder.Services.AddCmsAssets();
 builder.Services.AddRateLimiter(limits =>
 {
@@ -51,6 +67,14 @@ builder.Services.AddRateLimiter(limits =>
 var app = builder.Build();
 
 await app.InitialiseDatabaseAsync();
+
+if (operatorCommand)
+{
+    return await AdminCli.RunAsync(app.Services, args, Console.Out, Console.Error, Console.In);
+}
+
+// Nobody can sign in yet (a fresh install): make the first administrator and say where its temporary password is.
+await AccountBootstrap.RunAsync(app);
 
 // Fail at startup, not on the first event, if the configured checksum algorithm cannot be used.
 _ = app.Services.GetRequiredService<IPayloadChecksum>();
@@ -83,14 +107,17 @@ app.Use(async (context, next) =>
 });
 
 app.UseAuthentication();
+app.UsePasswordChangeRequired();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+app.MapAccountEndpoints();
 app.MapIngestionEndpoints();
 app.MapBatchEndpoints();
 app.MapAssetEndpoints();
 app.MapEntityEndpoints();
 app.MapAdminEndpoints();
+app.MapAdminInfoEndpoints();
 
 app.MapGet("/health", async (CmsReadDbContext db, CancellationToken cancellationToken) =>
         await db.Database.CanConnectAsync(cancellationToken)
@@ -99,6 +126,7 @@ app.MapGet("/health", async (CmsReadDbContext db, CancellationToken cancellation
     .AllowAnonymous();
 
 app.Run();
+return 0;
 
 /// <summary>Exposed so the integration tests can host the app with WebApplicationFactory.</summary>
 public partial class Program;

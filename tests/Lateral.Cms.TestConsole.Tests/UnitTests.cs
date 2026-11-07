@@ -25,6 +25,11 @@ public class CmsTargetTests
     [InlineData("api/assets/6f0c8f64-0000-4000-8000-000000000001", null, "http://cms.test/api/assets/6f0c8f64-0000-4000-8000-000000000001")]
     [InlineData("api/admin/assets", "limit=50", "http://cms.test/api/admin/assets?limit=50")]
     [InlineData("api/admin/ingestion/6f0c8f64-0000-4000-8000-000000000001/requeue", null, "http://cms.test/api/admin/ingestion/6f0c8f64-0000-4000-8000-000000000001/requeue")]
+    [InlineData("api/auth/login", null, "http://cms.test/api/auth/login")]
+    [InlineData("api/admin/users", null, "http://cms.test/api/admin/users")]
+    [InlineData("api/admin/users/alex%40example.com/password", null, "http://cms.test/api/admin/users/alex%2540example.com/password")]
+    [InlineData("api/admin/settings", null, "http://cms.test/api/admin/settings")]
+    [InlineData("api/admin/storage", null, "http://cms.test/api/admin/storage")]
     public void The_cms_routes_resolve_against_the_configured_host(string path, string? query, string expected)
     {
         Assert.True(CmsTarget.TryBuild(Base, path, query, out var target, out _));
@@ -49,10 +54,11 @@ public class CmsTargetTests
     [InlineData("swagger/index.html")]
     [InlineData("api/entitiesx")]
     [InlineData("api/admin")]
-    [InlineData("api/admin/users")]
     [InlineData("api/admin/resetx")]
     [InlineData("api/admin/ingestionx")]
     [InlineData("cms/batchesx")]
+    [InlineData("api/authx/login")]
+    [InlineData("api/admin/userss")]
     [InlineData("cms")]
     [InlineData("api")]
     [InlineData("api/entities/")]

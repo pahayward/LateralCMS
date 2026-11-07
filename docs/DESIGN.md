@@ -274,6 +274,9 @@ that is also why the design is a single instance.
 | `POST /api/entities/{id}/disable` and `/enable` | 401 | 403 | 403 | 200 / 404 |
 | `GET /api/admin/ingestion` | 401 | 403 | 403 | 200 |
 | `POST /api/admin/ingestion/{id}/requeue` | 401 | 403 | 403 | 200 / 404 / 409 |
+| `POST /api/auth/login` | 400 / 401 / 200 | 401 (cannot sign in to a session) | 200 | 200 |
+| `GET /api/auth/me`, `POST /api/auth/logout`, `POST /api/auth/password` | 401 | 200 / 204 / 409 (configured accounts) | 200 | 200 |
+| `/api/admin/users…`, `GET /api/admin/settings`, `GET /api/admin/storage` | 401 | 403 | 403 | 200 / 201 / 204 / 400 / 404 / 409 |
 
 The asset routes (section 11) follow the same pattern: `PUT`/`POST`/`DELETE` under `/cms/assets` for the CMS only; `GET /cms/assets/{id}` for the CMS and admins; `GET`/`HEAD /api/assets/{id}` for users and admins (clean assets only); `DELETE /api/assets/{id}` and `/api/admin/assets/*` for admins only; each has a row in the generated matrix. (The reset endpoint exists only in Development, or where an environment is named on purpose.) A test generates the role-by-route matrix from the mapped endpoints and
 fails if a route has no row; another proves no route updates or deletes an entity. Users see published, non-disabled entities;
@@ -287,7 +290,7 @@ A per-address failed-sign-in throttle answers `429` with an injected clock in te
 settings file or the environment; missing or malformed ones stop startup, naming the setting. No payload, password or
 `Authorization` header is logged (tested across success, rejection, 401 and failure paths), and the failed-sign-in log omits the
 submitted username. Responses carry `Cache-Control: no-store`, `X-Content-Type-Options: nosniff` and a restrictive CSP.
-Production enables HTTPS redirection and HSTS; Basic auth is only safe over TLS.
+Production enables HTTPS redirection and HSTS; Basic auth is only safe over TLS. People, sessions and the operator tool are in section 13.
 
 ## 10. Observability and alerts
 
@@ -403,6 +406,7 @@ unserved.
 | Finding | Closed by |
 |---|---|
 | Development passwords were committed to the repository (SH-01) | Settings files hold none; Development generates random ones into a git-ignored file on first run, only when none were supplied. *The earlier commit's history still contains the old development passwords; they no longer work.* |
+| People's passwords sat in clear text in configuration, with no way to change one while the service ran and no recovery if the only administrator was lost (AC-01, AC-04 to AC-07) | People are in the database with salted PBKDF2 hashes; sessions; an administrator manages them; a first-run administrator with a private temporary password; an operator command over SSH that works with the service stopped |
 | An authenticated sender could make the service buffer many 5 MiB bodies at once (SH-02) | Only `Ingestion:MaxConcurrentAccepts` batches are read at once; a bounded queue absorbs bursts; overflow gets `429` |
 | Behind a proxy every client shared one address, so the throttle either locked everyone out or could be dodged with a forged header (SH-03) | `X-Forwarded-For` is believed only from configured proxies and ignored otherwise |
 | The reset endpoint was refused only in `Production`, so any other environment name could enable it (SH-04) | An allow-list: Development, or an environment named on purpose |
@@ -411,8 +415,9 @@ unserved.
 | The test console holds live credentials and could run anywhere (SH-07) | It refuses to start outside Development unless told to |
 
 **Still open, in order of importance** (needs decisions or infrastructure beyond a local build; the next steps are in the limits
-table): (1) **Basic authentication with secrets in configuration** over whatever transport the deployment provides (K4, K5): move to
-a secret store, hashed credentials, TLS at the edge and signed requests for the CMS, which would also give replay protection;
+table): (1) **the CMS account's secret is in configuration and travels as Basic credentials** over whatever transport the deployment
+provides (K4, K5): use a secret store, TLS at the edge and signed requests for the CMS, which would also give replay protection
+(people no longer have this problem: hashed passwords and sessions, section 13);
 (2) **a stolen CMS credential can do real damage**: a delete timestamped up to an hour ahead blocks that id until then, and
 checksums are integrity, not authenticity (K10); (3) **no encryption at rest** for the database or asset files, and the SQLite
 file and asset folder rely on the operating system's permissions (K6); (4) **a mock scanner is not malware protection** (K19):
@@ -420,8 +425,61 @@ real protection needs a real engine, and defence in depth for whoever consumes t
 no SAST, SBOM or signed builds (K16); (6) payload content is served as JSON for consumers that must escape it before rendering (S14).
 
 **Verdict.** Secure by design in its principles (deny by default, fail closed, least privilege, keep and serve as little as
-possible), and the review's concrete weaknesses are closed. **Not production-ready as shipped:** the authentication, secret
-handling and scanner are demo-grade, which is stated rather than hidden.
+possible), and the review's concrete weaknesses are closed. For one household's server behind a TLS proxy it is reasonable as it
+stands (hashed passwords, sessions, recovery, the operator's guide); **not production-ready for anything larger:** the CMS
+secret handling and the scanner are demo-grade, and the sample applications are development tools, which is stated rather than hidden.
+
+## 13. Accounts, sign-in and operating it
+
+**People are in the database, not in configuration.** A `Users` row holds the name (unique without regard to case), the role
+(`User` or `Admin`, refused by a CHECK constraint otherwise), a PBKDF2-SHA256 hash with its own salt and iteration count
+(600000 by default, `Auth:PasswordHashIterations`), a security stamp, and when the password last changed and the person last
+signed in. A hash made with fewer iterations than the current setting is replaced at the next successful sign-in. The CMS service
+account and any `Auth:Users` stay in configuration, are compared as before, are listed read-only, and cannot be changed or
+disabled while the service runs; the CMS account stays there on purpose, so it still works when every person is locked out.
+
+**Two ways in.** Scripts send Basic credentials; a browser signs in with `POST /api/auth/login` and gets an HttpOnly,
+SameSite=Strict session cookie signed with keys kept on disk (so a restart does not sign anyone out). A policy scheme picks by the
+request: an `Authorization` header means Basic, else a session cookie means the session. Every session request re-reads the person
+(a few seconds' cache, `Auth:UserCacheSeconds`): a person who is gone, disabled or whose stamp changed is refused, and role and
+"must change password" are taken from the row, not from the cookie. A Basic sign-in for a database person costs a slow hash, so a
+pair that has just been checked is remembered for a few minutes under a keyed hash of it; the person is still looked up every time,
+so disabling them or changing the password ends it at once. A failed sign-in always costs one hash (against a decoy when the name
+does not exist), and wrong password, unknown name and disabled account give the same answer.
+
+**Protecting the cookie.** SameSite=Strict keeps it from being sent cross-site; as well, any request that is not a GET, HEAD or
+OPTIONS and is authorised only by the cookie must carry an `X-Requested-With` header, which a hostile page cannot add without
+the service's agreement (there is no CORS). A page that sends that header also gets a plain 401 instead of the browser's
+Basic-auth box. Failed sign-ins are counted per address and per username (in memory, per instance: a brake, not a lock).
+
+**Changing passwords.** A person changes their own by proving the current one (`POST /api/auth/password`); that ends every other
+session and keeps the one in use. An administrator resets someone's: a chosen password, or a generated temporary one returned once
+and replaced at the next sign-in. While a password is temporary every route except sign-in, sign-out, who-am-I and change-password
+answers 403 `password_change_required`, for sessions and Basic alike. The password policy is length (12 to 128), not the name, not a
+short list of common ones; no composition rules. Nothing can show an existing password.
+
+**Administering people.** `/api/admin/users` lists, creates, re-roles, disables, resets, signs out and deletes, each in one
+transaction with its audit row (no secret ever goes in an audit row or a log line). The last enabled administrator, and your own
+account, cannot be removed, disabled or demoted.
+
+**First run and recovery.** If nobody can sign in (no people, none in configuration) the service makes `admin` with a generated
+temporary password and writes it to `initial-admin-password.txt` beside the database, readable by the service account only, and
+**not to the log**; the file goes when that password is replaced. When access is lost, `dotnet Lateral.Cms.dll admin ...` run on
+the machine (over SSH) opens the same database with the same configuration and does the same things (list, create, set or
+generate a password, role, disable, enable, sign out, delete), with the same rules, working with the service stopped or running.
+Its authority is the ability to read and write the database file, which is also the authority to do the same by hand; every change
+is audited as `cli:<operating-system user>`.
+
+**Settings and storage are visible.** `GET /api/admin/settings` reports every setting the service reads: value now, default, the
+configuration source it came from, the environment variable that sets it and a description from `settings.json`. A test fails if an
+options property has no description, so the page cannot fall behind the code. Secrets are only "set" or "not set", and a password in
+a connection string is hidden. It is read-only: configuration is read at start-up. `GET /api/admin/storage` reports where the
+database, asset folder and keys are, their sizes, free disk space, quota use and what to back up.
+
+**What this does not do.** No multi-factor sign-in, no sign-up or password reset by email, no lockout of an account (a lockout
+would let anyone who knows a name lock the administrator out; the throttle slows guessing instead), no session list. The photo
+library and engineering console are not part of it: they act as fixed accounts, run only in Development on the loopback address,
+and have no sign-in page (K22). The operator's guide is [OPERATIONS](OPERATIONS.md).
 
 ## Limits
 
@@ -431,7 +489,7 @@ What this build knowingly leaves at demo quality, in order of importance, with w
 |---|---|---|---|
 | K1 | Scale-out | SQLite file; one writer; an in-process gate; one instance | A server database; several workers claiming batches (`SELECT … FOR UPDATE SKIP LOCKED`); no gate; a shared throttle |
 | K8 | Ordering | Correct only under S17; both counterexamples pinned | A CMS-assigned monotonic sequence per entity, or deletes that carry a version |
-| K4 | Credentials | Plain text in configuration; Basic auth as the brief requires; per-instance throttle | A secret store, stored hashes, request signing for the CMS, OIDC for people, gateway rate limiting |
+| K4 | Credentials | The CMS account's secret is plain text in configuration and travels as Basic credentials, as the brief requires; the throttle is per instance and in memory. People are hashed (PBKDF2) in the database, with sessions, and have no multi-factor sign-in | A secret store, request signing for the CMS, OIDC or passkeys for people, gateway rate limiting |
 | K6 | Deletion | The live file is wiped on delete. No encryption at rest, no retention for events, tombstones or batches. Event rows keep an erased entity's id and its payload checksum | Backups, replicas and WAL archives under the erasure policy; encryption at rest; crypto-shredding; retention and a purge job |
 | K7 | Recovery | No resync or replay; a dropped batch is visible only as a gap | A sequence or offset from the CMS, a replay endpoint, periodic reconciliation by checksum |
 | K3 | Queue | A table in the same database; one worker; takedown priority per batch (a flood of takedowns could starve publish-only batches) | A broker or partitioned queue keyed by entity id; every Nth batch oldest-first |
@@ -442,13 +500,14 @@ What this build knowingly leaves at demo quality, in order of importance, with w
 | K11 | Payload storage | Inline `TEXT` up to 256 KiB; larger content goes to the asset store, which is a folder on local disk behind `IAssetStore` | An object store behind the same interface, with the durability and lifecycle features a folder does not have |
 | K12 | Operations | A meter and structured logs; alerts only listed here | OpenTelemetry export, dashboards, alert rules as code, runbooks |
 | K13 | API surface | Keyset paging by id only; no filtering, sorting, search, ETags or versioning | Those, and an API version policy |
-| K14 | Admin audit | An append-only `AuditLog` written in the same transaction as each admin, asset and verdict change; the schema refuses updates and deletes. No retention policy, no tamper evidence beyond the schema, sign-ins not recorded | A hash-chained or externally shipped audit trail, sign-in and failure events, retention and access rules |
+| K14 | Admin audit | An append-only `AuditLog` written in the same transaction as each admin, asset and verdict change; the schema refuses updates and deletes. No retention policy, no tamper evidence beyond the schema, successful sign-ins are audited, failed ones only logged | A hash-chained or externally shipped audit trail, sign-in and failure events, retention and access rules |
 | K15 | Portability | Only SQLite exercised; the read-only mode and partial index are SQLite specifics | A second provider in CI and a migration strategy |
 | K16 | Verification | The deliberate-defect log is manual; a CI job fails on known-vulnerable packages (run once locally: none); no soak, chaos, SAST or DAST | Automated mutation testing scoped to `Domain` and the parser, dependency scanning, a threat model |
 | K17 | Developer tooling | The console and reset endpoint exist for hand-testing and are fenced | Not shipped to production |
 | K18 | Tenancy | One CMS, one tenant | Isolation, per-tenant keys and quotas |
 | K19 | Content scanning | A mock scanner that recognises obvious test patterns, to prove the pipeline (quarantine, verdict, wipe, retry, fail closed). It is **not** malware protection | A real engine behind `IAssetScanner` (ClamAV or a vendor service), signature updates with re-scan of old assets (supported), sandboxed rendering and a policy on which types are accepted at all |
 | K20 | Asset store | One folder on one disk: no replication, erasure coding, versioning, lifecycle rules, pre-signed URLs or server-side encryption; overwrite-before-delete is best effort on SSDs and copy-on-write systems; assets are not covered by `secure_delete` | An object store (S3 or similar) with encryption and per-object keys; crypto-shredding for erasure |
+| K22 | Sample applications | The photo library and engineering console act as fixed accounts read from a settings file, listen on the loopback address only and refuse to run outside Development. They have no sign-in page, so they cannot be offered to a household | A sign-in page and a server-side session that carries each person's own CMS session, a proxy-aware host check, and a decision about which of the two is a product |
 | K21 | SQLite connection pool | Microsoft.Data.Sqlite 9 has a race in its pool: a connection is marked active before its owner is recorded, so a second thread that finds the pool empty can take it as "leaked" and fail the first with `database is locked` (seen as a rare HTTP 500 under many parallel requests). Worked around by opening every connection under one lock (`SerialOpenInterceptor`, tests `ConnectionPoolTests`) | Remove the workaround once the library fixes it (re-check on each upgrade of the SQLite package), or move to a server database where the pool is not the library's |
 
 **.NET 9** leaves support on 10 November 2026. The projects target `net9.0` with `RollForward=Major`, so they build with a 9 SDK
