@@ -130,9 +130,9 @@ comes from the rebuild brief ([REBUILD-BRIEF](REBUILD-BRIEF.md), section 5); thi
 | TE-07 | A load smoke (§6.5) is in the repo and its results are recorded with machine and date | SHOULD | B | K2 | Done: [EVIDENCE](EVIDENCE.md#3-measurements) | - | - |
 | DL-01 | A .NET 9 solution (`net9.0`, `RollForward=Major` so it runs where only a newer runtime is installed) | MUST | S | - | Done | - | `DeliveryTests` (1) |
 | DL-02 | README: prerequisites, run, a try-it flow that includes following a batch, tests, configuration, running outside Development, database and migrations, ranked limitations | MUST | D O | - | Done; the try-it commands were run against the built service ([EVIDENCE](EVIDENCE.md#4-operated))| - | - |
-| DL-03 | A CI job runs the README's try-it commands against the built service | SHOULD | O | - | CI job written; not run (needs a push) | - | - |
-| DL-04 | CI builds and tests on Windows, macOS and Linux with warnings as errors; no OS-specific paths | MUST | O | - | Workflow written; run locally on Windows only; macOS and Linux not run (needs a push) | - | - |
-| DL-05 | A GitHub repository holds all of the above. The remote is the user's decision; never push unasked | MUST | - | - | Open: no remote, never pushed (the owner decides) | - | - |
+| DL-03 | A CI job runs the README's try-it commands against the built service | SHOULD | O | - | Done: the `README try-it` job passed in CI on all three pushes | - | - |
+| DL-04 | CI builds and tests on Windows, macOS and Linux with warnings as errors; no OS-specific paths | MUST | O | - | Partly: CI passes on Windows and Ubuntu, the suites and a smoke test also pass by hand on Debian 13, and macOS passed on CI runs 1 and 2 but failed its Test step on run 3 (cause not yet read) | - | - |
+| DL-05 | A GitHub repository holds all of the above. The remote is the user's decision; never push unasked | MUST | - | - | Done: pushed to github.com/pahayward/LateralCMS | - | - |
 | DL-06 | Five docs with one job each (D7); relative links resolve (a link test); no number typed by hand that a test or script can produce | SHOULD | D | - | Done | - | `DeliveryTests` (1) |
 
 ### Developer tooling
@@ -181,7 +181,7 @@ comes from the rebuild brief ([REBUILD-BRIEF](REBUILD-BRIEF.md), section 5); thi
 | SH-08 | Input that cannot be read is a `400` with a problem body in every environment, never a `500`: a bad query value, a body that is not JSON, an unknown enum value (ASP.NET throws for these in Development unless told not to). A range in a unit other than bytes is ignored | MUST | I M | - | Done | M76 | `BadInputTests` (4) |
 | SH-07 | The test console, which holds live credentials, refuses to start outside Development unless told to | SHOULD | M | K17 | Done; its tests are in the separate `Lateral.Cms.TestConsole.Tests` project, which does not use requirement ids | M68 | - |
 | DX-01 | The engineering console's endpoint catalogue (`endpoints.json`, which drives its API workbench and curl generator) lists exactly the routes the service maps, names the same callers the role matrix proves, and explains the responses each can give | SHOULD | I M | - | Done | M78 | `EndpointCatalogueTests` (4) |
-| DX-02 | The engineering console's Requirements page traces every original requirement in the brief to how it was met, with its tests and a live check. The brief's words are verbatim; an item is "met" only if every requirement row it cites is Done; anything partly or not met says what is missing; and the generated requirements data (`requirements.json`) matches this document | SHOULD | I M D | - | Done | M80 M81 | `RequirementsTraceTests` (4) |
+| DX-02 | The engineering console's Requirements page traces every original requirement in the brief to how it was met, with its tests and a live check. The brief's words are verbatim; an item is "met" only if every requirement row it cites is Done; anything partly or not met says what is missing; and the generated requirements data (`requirements.json`) matches this document | SHOULD | I M D | - | Done | M80 M81 | `RequirementsTraceTests` (5) |
 
 ### Accounts, sign-in and operating it
 

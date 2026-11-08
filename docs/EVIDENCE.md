@@ -225,11 +225,22 @@ differences (for example the Warning run) are within noise. **No figure here is 
 | Generated development credentials | Started the service in Development with no credentials supplied: it wrote the git-ignored file, the console found all three accounts, `git check-ignore` confirmed the file is ignored | Worked |
 | `secure_delete` makes a hard delete physical | `StorageGuaranteeTests`: a control shows SQLite's default leaves a deleted value in the file after a checkpoint; with it on, a marker is absent from the file and WAL after delete, replace and null | Passed |
 
+### Linux (Debian 13)
+
+Run on 8 November 2026 on Debian 13 (kernel 6.12, .NET 10.0.103 rolling forward over the `net9.0` projects). Details in [linux-testing.md](../linux-testing.md).
+
+| Check | Command | Result |
+|---|---|---|
+| Strict build | `CI=true dotnet build -c Release` | 0 warnings, 0 errors |
+| Service suite | `dotnet test` | 684 passed, 0 failed, 5 m 17 s |
+| Test console suite | `dotnet test` | 134 passed, 0 failed |
+| Real-machine smoke test | `bash tools/homelab/verify.sh --no-pull --no-tests` | 30 of 30: file modes 600 and 700, forced password change, event and asset end to end, SSH reset while running, no secrets or errors in the log |
+
 ## 5. Not proven, and how each is labelled
 
 | Item | Status |
 |---|---|
-| **CI on Windows, macOS and Linux** | The workflow is written (`.github/workflows/ci.yml`) and **has not been run**: nothing was pushed (the remote is the owner's decision). Everything above ran on Windows only. Not shown: that the suite passes on macOS and Linux |
+| **CI on Windows, macOS and Linux** | The workflow is written (`.github/workflows/ci.yml`) and **has not been run**: nothing was pushed (the remote is the owner's decision). Everything above ran on Windows; the suites and a smoke test were also run by hand on Debian 13 (section 4). Not shown: macOS, or Linux through CI |
 | **README try-it job in CI** | Written, not run in CI (same reason). The commands themselves were run locally, see section 4 |
 | **A real scanner** | Only the mock was built and tested. It shows the quarantine, verdict, wipe and fail-closed behaviour; it says nothing about detecting real malware (limit K19) |
 | **Wipe on SSD or copy-on-write storage** | Overwrite-before-delete was shown to zero the bytes through an open handle and to remove the file; whether the physical blocks are gone depends on the device and file system (limit K20) |

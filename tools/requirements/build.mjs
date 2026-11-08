@@ -51,8 +51,12 @@ for (const line of requirements.split('\n')) {
 }
 
 if (rows.length < 100) throw new Error(`Only ${rows.length} requirement rows were read: has the table format changed?`);
+// The brief, word for word (the fenced text in section 1 of REBUILD-BRIEF.md), shown at the top of the Requirements page.
+const originalStart = brief.indexOf('```text\n', brief.indexOf('\n## 1. The original brief'));
+const original = brief.slice(originalStart + 8, brief.indexOf('\n```', originalStart)).trimEnd();
+if (original.length < 1000) throw new Error('The original brief was not found in docs/REBUILD-BRIEF.md section 1');
 const out = join(root, 'tools', 'Lateral.Cms.TestConsole', 'wwwroot', 'requirements.json');
-writeFileSync(out, JSON.stringify({ about: 'Generated from docs/REQUIREMENTS.md by tools/requirements/build.mjs. Do not edit by hand.', areas, rows }, null, 2) + '\n');
+writeFileSync(out, JSON.stringify({ about: 'Generated from docs/REQUIREMENTS.md by tools/requirements/build.mjs. Do not edit by hand.', original, areas, rows }, null, 2) + '\n');
 const count = (f) => rows.filter(f).length;
 console.log(`${rows.length} requirements (${count((r) => r.origin === 'brief')} from the brief's matrix, ${count((r) => r.origin === 'added')} added); ` +
   `${count((r) => r.statusKind === 'done')} done, ${count((r) => r.statusKind === 'partly')} partly, ${count((r) => r.statusKind === 'open')} open`);

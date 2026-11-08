@@ -147,6 +147,17 @@
 
   // ---------------------------------------------------------------- the page
 
+  /** The assignment exactly as it was sent, above everything that interprets it. */
+  function originalBrief() {
+    return el('details', { class: 'card', open: true },
+      el('summary', {}, el('b', { text: 'The original requirements, word for word' }), ' ',
+        el('span', { class: 'hint', text: 'as sent by the recruiter; everything below answers this' })),
+      el('p', { class: 'hint' }, 'A printout of the email is in the repository: ',
+        el('a', { href: 'https://github.com/pahayward/LateralCMS/blob/main/docs/Lateral.pdf', target: '_blank', rel: 'noopener', text: 'docs/Lateral.pdf' }),
+        '. Its sample JSON is not valid JSON (typographic quotes, a trailing comma); it is reproduced here as given.'),
+      el('pre', { class: 'code brief-original', text: st.reqs.original }));
+  }
+
   function draw() {
     const tabs = el('div', { class: 'tabs', role: 'tablist' }, TABS.map(([key, label]) => el('button', {
       type: 'button', class: 'tab', role: 'tab', 'aria-selected': String(st.tab === key), text: label, onclick: () => { st.tab = key; draw(); },
@@ -155,7 +166,7 @@
       : st.tab === 'all' ? allTab()
         : el('div', { class: 'col' }, el('p', { class: 'hint', text: 'Things asked for after the brief, in the order they came. The left-hand column is what was asked for, as recorded in the brief or in the user\'s own words.' }),
           el('div', { class: 'card' }, el('div', { class: 'card-head' }, el('h2', { text: st.trace.beyond.title }), el('span', { class: 'hint', text: st.trace.beyond.blurb })), table(st.trace.beyond.items, 'beyond', 'What was asked for')));
-    fill(ui.root, summary(), tabs, body);
+    fill(ui.root, summary(), originalBrief(), tabs, body);
   }
 
   function build(container) {

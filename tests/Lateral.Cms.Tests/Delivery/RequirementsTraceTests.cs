@@ -55,6 +55,20 @@ public partial class RequirementsTraceTests
     }
 
     [Fact]
+    public void The_requirements_page_opens_with_the_original_brief_word_for_word_and_the_pdf_of_the_email_is_in_the_repository()
+    {
+        var brief = File.ReadAllText(Path.Combine(Root, "docs", "REBUILD-BRIEF.md"));
+        var from = brief.IndexOf("```text", brief.IndexOf("## 1. The original brief", StringComparison.Ordinal), StringComparison.Ordinal);
+        var text = brief[(from + "```text".Length)..brief.IndexOf("\n```", from, StringComparison.Ordinal)];
+
+        using var json = Json("requirements.json");
+        // If this fails, run  node tools/requirements/build.mjs
+        Assert.Equal(Normalise(text), Normalise(json.RootElement.GetProperty("original").GetString()!));
+        Assert.True(File.Exists(Path.Combine(Root, "docs", "Lateral.pdf")), "the original email, printed to PDF, belongs in docs/Lateral.pdf");
+        Assert.Contains("docs/Lateral.pdf", File.ReadAllText(Path.Combine(Root, "README.md")));
+    }
+
+    [Fact]
     public void Every_brief_quote_is_the_briefs_own_words()
     {
         var brief = File.ReadAllText(Path.Combine(Root, "docs", "REBUILD-BRIEF.md"));

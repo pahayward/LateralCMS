@@ -64,3 +64,23 @@
   margin-left: auto;
   color: #7f89a1;
 }
+
+/* who is signed in (session.js) and the sign-in page */
+.site-bar .who { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; color: #c9d0e0; }
+.site-bar .who button { background: transparent; border: 1px solid #3a4258; color: #fff; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
+.site-bar .who button:hover { background: #222a3d; }
+.site-bar .note + .who { margin-left: 12px; }
+
+body.login { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f6fb; color: #1b2030; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+@media (prefers-color-scheme: dark) { body.login { background: #12151d; color: #e6e9f2; } }
+.login-card { width: min(380px, calc(100vw - 32px)); background: #fff; border: 1px solid #d9deea; border-radius: 12px; padding: 28px; box-shadow: 0 6px 24px rgba(20, 30, 60, .08); }
+@media (prefers-color-scheme: dark) { .login-card { background: #1b2030; border-color: #2c3450; } }
+.login-card h1 { margin: 0 0 4px; font-size: 20px; }
+.login-card p { margin: 0 0 18px; color: #5b6478; font-size: 13px; }
+.login-card label { display: block; font-size: 13px; margin: 12px 0 4px; }
+.login-card input { width: 100%; box-sizing: border-box; padding: 9px 10px; border: 1px solid #b9c0d3; border-radius: 8px; font: inherit; background: transparent; color: inherit; }
+.login-card button { margin-top: 18px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: #3b6cf6; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.login-card button:disabled { opacity: .6; cursor: default; }
+.login-card .error { margin-top: 12px; color: #c0332b; font-size: 13px; min-height: 1.2em; }
+.login-card .demo { margin-top: 16px; padding-top: 12px; border-top: 1px solid #d9deea; font-size: 12px; color: #5b6478; }
+.login-card .demo code { background: rgba(120, 130, 160, .15); padding: 1px 5px; border-radius: 4px; }

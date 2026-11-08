@@ -106,10 +106,7 @@ const monthTitle = (d) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 
 const rand = (n = 6) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => (b % 36).toString(36)).join('');
 
-async function sha256Hex(buffer) {
-  const digest = await crypto.subtle.digest('SHA-256', buffer);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+// sha256Hex comes from sha256.js (it works without crypto.subtle, which plain http on a LAN address lacks)
 
 async function copyText(text) {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }

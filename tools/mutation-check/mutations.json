@@ -638,18 +638,18 @@
   {
     "id": "M80",
     "area": "Console",
-    "rule": "the requirements document quietly calls the unpushed repository done",
+    "rule": "the requirements document quietly calls the part-green cross-platform CI done",
     "file": "docs/REQUIREMENTS.md",
-    "find": "Open: no remote, never pushed (the owner decides)",
-    "replace": "Done"
+    "find": "Partly: CI passes on Windows and Ubuntu",
+    "replace": "Done: CI passes on Windows and Ubuntu"
   },
   {
     "id": "M81",
     "area": "Console",
-    "rule": "the requirements page claims the repository requirement is met",
+    "rule": "the requirements page claims the cross-platform requirement is met",
     "file": "tools/Lateral.Cms.TestConsole/wwwroot/brief-trace.json",
-    "find": "\"id\": \"R8.4\",\n          \"status\": \"open\"",
-    "replace": "\"id\": \"R8.4\",\n          \"status\": \"met\""
+    "find": "\"id\": \"R8.3\",\n          \"status\": \"partly\"",
+    "replace": "\"id\": \"R8.3\",\n          \"status\": \"met\""
   },
   {
     "id": "M82",

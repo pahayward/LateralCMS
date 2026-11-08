@@ -7,7 +7,7 @@ const NAV = [
   { group: 'Explore', items: [['records', 'Records', 'records'], ['assets', 'Assets', 'image']] },
   { group: 'Act', items: [['events', 'Send events', 'send'], ['workbench', 'API workbench', 'tool']] },
   { group: 'Operate', items: [['ops', 'Queue and admin', 'pulse'], ['accounts', 'People and sign-in', 'users'], ['settings', 'Settings and storage', 'gear']] },
-  { group: 'Verify', items: [['verify', 'Security and limits', 'shield']] },
+  { group: 'Verify', items: [['testing', 'Testing', 'check'], ['verify', 'Security and limits', 'shield']] },
 ];
 
 function buildNav() {

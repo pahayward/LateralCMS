@@ -4,8 +4,9 @@ For a home server (Linux with systemd is assumed, but nothing here is Linux-only
 steps, as copyable blocks, are in the engineering console under **Settings and storage > Run it at home**.
 
 What was and was not run: the first-run, sign-in, forced password change and SSH reset steps below were run for real against
-a Production-mode service on Windows. The systemd unit, the reverse proxy and the backup commands are written from the way the
-service behaves and have not been run on Linux.
+a Production-mode service on Windows, and again on Debian 13 (`tools/homelab/verify.sh`, 30 of 30 checks, see
+[linux-testing.md](../linux-testing.md)). The systemd unit, the reverse proxy and the backup commands are written from the way the
+service behaves and have not been run.
 
 ## What you are running
 
@@ -148,7 +149,7 @@ admin set-password admin --generate
 admin create-user rescue --role admin --generate
 ```
 
-(Not run on Linux; if `systemd-run` is not to your taste, run `dotnet Lateral.Cms.dll admin ...` from `/opt/lateral` as the
+(The `systemd-run` form itself has not been run, only the same command without it; if `systemd-run` is not to your taste, run `dotnet Lateral.Cms.dll admin ...` from `/opt/lateral` as the
 `lateral` user with the same environment variables set.)
 
 `set-password` asks twice and shows nothing as you type; `--stdin` reads it from standard input; `--generate` prints a
@@ -187,8 +188,9 @@ The database is migrated when the service starts. Back it up first.
 
 ## Things to know
 
-- **The console is not part of this.** The photo library and engineering console are development tools: loopback only, fixed
-  accounts from a settings file, and they refuse to run outside Development. They can be pointed at a real service
+- **The console is not part of this.** The photo library and engineering console are development tools: loopback only, behind
+  a demo sign-in (`admin`/`admin` for everything, `user`/`password` for the photo library only), with the CMS's accounts from a
+  settings file, and they refuse to run outside Development. They can be pointed at a real service
   (`Console__CmsBaseUrl`) for a look, but they are not a household-facing app, and they hold admin credentials.
 - **One instance.** SQLite and one writer; no clustering.
 - **The scanner is a mock.** Do not rely on it as malware protection.

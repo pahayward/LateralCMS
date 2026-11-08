@@ -57,8 +57,11 @@ public sealed class FakeCms : HttpMessageHandler
 }
 
 /// <summary>The console under test, pointed at <see cref="FakeCms"/> and given known accounts.</summary>
-public sealed class ConsoleFactory : WebApplicationFactory<Program>
+public class ConsoleFactory : WebApplicationFactory<Program>
 {
+    /// <summary>Most tests are about the console's behaviour, not its sign-in, so it is off unless a test class turns it on.</summary>
+    protected virtual bool SignInEnabled => false;
+
     public const string CmsUser = "cms-account-name";
     public const string CmsPassword = "cms-password-value";
     public const string UserName = "reader@example.test";
@@ -77,6 +80,7 @@ public sealed class ConsoleFactory : WebApplicationFactory<Program>
         {
             ["Console:CmsBaseUrl"] = "http://cms.test",
             ["Console:AllowNonDevelopment"] = "true", // these tests run in the Testing environment
+            ["Console:SignIn:Enabled"] = SignInEnabled ? "true" : "false",
             ["Console:Accounts:cms:Username"] = CmsUser,
             ["Console:Accounts:cms:Password"] = CmsPassword,
             ["Console:Accounts:user:Username"] = UserName,

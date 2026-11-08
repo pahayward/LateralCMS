@@ -1,5 +1,6 @@
 {
   "about": "Generated from docs/REQUIREMENTS.md by tools/requirements/build.mjs. Do not edit by hand.",
+  "original": "Scenario: A CMS sends live updates via a webhook/event pipeline.\nEvents include, but are not limited to:\n- Add → new entities are being created.\n- Update → an existing entity was successfully changed.\n- Delete → an entity was removed or unpublished. Please note that unpublishing the entity does not remove it from the CMS, but disables it.\nOnce an entity is updated (new fields, new values etc), a new version is set for the entity in the CMS. New data is only available upon publishing the event! This will send an event containing the latest entity version. An “unpublish” event will contain the entity fields, as well as the version that is being unpublished.\nPlease keep in mind that an entity with version X can be modified → resulting in version X+1. Then, this gets unpublished. However, since there was no published version before that, you do no longer have the latest version in your database. Please also treat this corner case appropriately!\nThe CMS also handles confidential data, and must not be served publicly. Since the system does not provide any information about which data is of the said tier, you have to assume all data is restricted. The entities should not be publicly available. Please authenticate your endpoints so that only allowed users can access the REST API. You can use the same basic auth used for the CMS, but the users should be different. One is an organization request (the CMS sending updates), the other is user requests.\nTask: Build a .NET 9 service that ingests those events, processes them, stores them in a database, and exposes them via a clean API.\nRequirements:\n\n1. Data ingestion layer\n   * Expose a webhook endpoint: /cms/events\n   * Secure your endpoint using Basic Authentication.\n      * Username: feel free to use any string with a length of 10 to 20 characters.\n      * Password: random guid.\n   * Accept batch events. The first version added is version 1, and you can get multiple revisions per entity. Schema example below:\n\n[\n{ \"type\": \"publish\", \"id\": \"X\", \"payload\": {...}, \"version\": 2, \"timestamp”: ”2024-01-01T00:00:00Z”},\n{ \"type\": \"delete\", \"id\": \"Y\", \"timestamp”: ”2024-01-01T00:00:00Z” },\n{ \"type\": \"unPublish\", \"id\": \"Z\", \"payload\": {...}, \"version\": 4, \"timestamp”: ”2024-01-01T00:00:00Z”},\n]\n\n2. Application Layer\n   * Incoming data must be validated and sanitized.\n   * Deleted entities should be removed (hard-delete), while unpublish should still keep the data in your persistence layer.\n3. Data storage\n   * EF Core + Relational database of your choice.\n   * Entities must keep track of the latest data version.\n4. REST API\n   * Provide endpoints that support listing entities for consumers.\n      * If the user is an admin (feel free to decide which userId/email corresponds to that of an admin), it will receive all entities that a normal user can see, including the ones that were disabled. No need to implement separate endpoints, feel free to decide how to approach this!\n   * Data can not be updated by any kind of users, but an admin can disable them from the API - this will not affect the CMS, it’s an overwrite that does not affect CMS data!\n5. Performance\n   * Feel free to use any asynchronous mechanisms to process incoming requests. This can also be synchronous, but we would like to understand why either decision was taken.\n   * Use a read-only/writer configuration for your application context and optimize your EF read queries.\n6. Observability\n   * Log processed events, including failing ones.\n7. Testing\n   * Test how events are processed and whether the ingestion constraints are successfully followed by the service.\n   * Test your basic authentication mechanism with valid/invalid user-password combinations.\n8. Deliverable\n   * .NET Core 9 or above solution.\n   * Provide a README with setup/running instructions.\n   * The solution should work on either Mac or Windows, so build it platform-agnostic.\n   * Github repo with all the above.\n\nNotes to consider: This assignment is intentionally open-ended. Focus on the correctness, structure, and clarity of the system. Correct event processing is the most important part. Feel free to make use of available LLMs to help you achieve the goal proposed in this assignment!",
   "areas": [
     "Event semantics",
     "Ingestion",
@@ -1843,8 +1844,8 @@
         "O"
       ],
       "limit": "",
-      "status": "CI job written; not run (needs a push)",
-      "statusKind": "partly",
+      "status": "Done: the `README try-it` job passed in CI on all three pushes",
+      "statusKind": "done",
       "mutations": [],
       "tests": [],
       "origin": "brief"
@@ -1859,7 +1860,7 @@
         "O"
       ],
       "limit": "",
-      "status": "Workflow written; run locally on Windows only; macOS and Linux not run (needs a push)",
+      "status": "Partly: CI passes on Windows and Ubuntu, the suites and a smoke test also pass by hand on Debian 13, and macOS passed on CI runs 1 and 2 but failed its Test step on run 3 (cause not yet read)",
       "statusKind": "partly",
       "mutations": [],
       "tests": [],
@@ -1873,8 +1874,8 @@
       "priNote": "",
       "evidence": [],
       "limit": "",
-      "status": "Open: no remote, never pushed (the owner decides)",
-      "statusKind": "open",
+      "status": "Done: pushed to github.com/pahayward/LateralCMS",
+      "statusKind": "done",
       "mutations": [],
       "tests": [],
       "origin": "brief"
@@ -2557,7 +2558,7 @@
       "tests": [
         {
           "name": "RequirementsTraceTests",
-          "count": 4
+          "count": 5
         }
       ],
       "origin": "added"

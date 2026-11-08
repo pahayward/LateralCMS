@@ -200,7 +200,15 @@ public class HardeningTests
         using (await factory.Services.GetRequiredService<Lateral.Cms.Persistence.WriteGate>().AcquireAsync(CancellationToken.None))
         {
             sent = [.. Enumerable.Range(0, 6).Select(_ => factory.Cms().PostAsync([Evt.Publish(Evt.Id(), 1, 1)]))];
-            await Task.Delay(750);
+            // Wait for the five rejections to arrive rather than for a fixed time: on a busy machine they take longer than any
+            // short delay, and a fixed one made this test fail under load. Then give a sixth a moment to wrongly complete.
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (sent.Count(s => s.IsCompleted) < 5 && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50);
+            }
+
+            await Task.Delay(500);
 
             var turnedAway = sent.Where(s => s.IsCompleted).ToList();
             Assert.Equal(5, turnedAway.Count);

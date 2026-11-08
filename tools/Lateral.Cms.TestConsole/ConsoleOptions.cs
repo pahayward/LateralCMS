@@ -27,6 +27,9 @@ public sealed class ConsoleOptions
     /// </summary>
     public bool AllowNonDevelopment { get; set; }
 
+    /// <summary>The sign-in in front of every page and call. On by default; the demo people are admin/admin and user/password.</summary>
+    public SignInOptions SignIn { get; set; } = new();
+
     public Dictionary<string, AccountOptions> Accounts { get; set; } = new();
 
     public LimitsOptions Limits { get; set; } = new();
@@ -57,4 +60,26 @@ public sealed class LimitsOptions
     public long MinPartBytes { get; set; } = 5L * 1024 * 1024;
 
     public long MaxPartBytes { get; set; } = 64L * 1024 * 1024;
+}
+
+/// <summary>Who may open the console. Demo defaults, set in configuration (<c>Console:SignIn:People</c>) for anything else.</summary>
+public sealed class SignInOptions
+{
+    public bool Enabled { get; set; } = true;
+
+    public List<PersonOptions> People { get; set; } =
+    [
+        new() { Name = "admin", Password = "admin", Role = SignIn.AdminRole },
+        new() { Name = "user", Password = "password", Role = SignIn.UserRole },
+    ];
+}
+
+public sealed class PersonOptions
+{
+    public string Name { get; set; } = "";
+
+    public string Password { get; set; } = "";
+
+    /// <summary><c>admin</c> (everything) or <c>user</c> (the photo library only).</summary>
+    public string Role { get; set; } = SignIn.UserRole;
 }

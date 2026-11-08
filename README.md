@@ -2,10 +2,43 @@
 
 **A webhook in, a read API out, and a store that always ends up in the right state.**
 
-![Lateral Photos, a sample application that keeps everything in the CMS](docs/images/photos-timeline.png)
+## Set up and run
 
-<sub>Lateral Photos, the sample application: every photo is a record in the CMS and every picture a scanned asset. All the
-screenshots in this file are taken from a running copy by <code>node tools/screenshots/capture.mjs</code>.</sub>
+You need the **.NET 9 SDK or newer** and `git`. Windows, macOS and Linux all work (it has been run on Debian 13 and CI runs it on
+Windows, macOS and Ubuntu). The database is a SQLite file, so there is nothing else to install.
+
+```bash
+git clone https://github.com/pahayward/LateralCMS.git
+cd LateralCMS
+
+dotnet run --project src/Lateral.Cms                 # terminal 1: the CMS service on http://localhost:5080
+dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the website on http://localhost:5100
+```
+
+Open <http://localhost:5100> and sign in:
+
+| Sign in as | Name / password | Opens |
+|---|---|---|
+| Admin | `admin` / `admin` | everything: the photo library and the engineering console (`/engineering`) |
+| User | `user` / `password` | the photo library only |
+
+These two are demo accounts for the website. The **CMS service's own** accounts (the webhook sender, a reader and an admin for
+the REST API) are generated the first time it runs into `src/Lateral.Cms/App_Data/dev-credentials.json`; see [Run it](#run-it)
+and [Try it](#try-it) for `curl` examples against the API.
+
+```bash
+dotnet test                       # both suites, a few minutes
+bash tools/testing/run.sh         # the same, and records the results for the engineering console's Testing page
+```
+
+**The assignment.** This is the answer to a take-home brief; a printout of the original email is in
+[docs/Lateral.pdf](docs/Lateral.pdf), and the engineering console's **Requirements** page opens with it word for word, then
+shows how each item was met and the proof. Running it on a home server rather than a laptop: [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+## The CMS
+
+**This repository is a CMS service.** Everything else here (the photo app, the engineering console) exists to use it, show it
+working and test it.
 
 A .NET 9 service that receives a CMS's `publish`, `unPublish` and `delete` events in batches, reconciles them into the
 latest state of each entity whatever order they arrive in, and serves that state through an authenticated, role-filtered
@@ -16,7 +49,12 @@ answers `202` with a link to follow it. A background worker then applies each ba
 changes state if it sorts after what is stored, so replays do nothing and late or duplicated events cannot undo newer
 ones. Users read published entities; admins read everything and can disable an entity locally without touching the CMS.
 
-## At a glance
+![The CMS architecture: the webhook, the read API, the asset store, the database and the workers](tools/Lateral.Cms.TestConsole/wwwroot/diagrams/architecture.svg)
+
+<sub>The CMS on its own: who calls it, the routes, the database and disk it keeps, and the background workers. The same diagram is
+clickable in the engineering console, beside two more (the life of an event and of an asset).</sub>
+
+### At a glance
 
 - **Correct under bad delivery.** Events can arrive late, twice or out of order and the end state is the same, checked against
   an independent oracle on 20,000 shuffled timelines a run.
@@ -27,8 +65,32 @@ ones. Users read published entities; admins read everything and can disable an e
   password ever in a log.
 - **Made to be run at home.** A first-run administrator, an SSH command that resets any password, every setting and storage
   path on view, and a [home-server guide](docs/OPERATIONS.md).
-- **Proven, not claimed.** 684 service tests and 134 console tests; 93 deliberate defects planted one at a time and each caught
+- **Proven, not claimed.** 685 service tests and 157 console tests; 93 deliberate defects planted one at a time and each caught
   by a test ([evidence](docs/EVIDENCE.md)); every original requirement traced to how it was met, including the ones that were not.
+
+### Documentation for the CMS
+
+| | |
+|---|---|
+| [docs/DESIGN.md](docs/DESIGN.md) | the decisions, the contract, the rules, the limits |
+| [docs/OPERATIONS.md](docs/OPERATIONS.md) | running it at home: install, configure, sign in, recover over SSH, back up, upgrade |
+| [docs/GUIDELINES.md](docs/GUIDELINES.md) | the rules the code is held to, used as a review checklist |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | every requirement, its priority and evidence, and the tests that prove it |
+| [docs/EVIDENCE.md](docs/EVIDENCE.md) | test counts, the deliberate-defect log, measurements |
+| [linux-testing.md](linux-testing.md) | the build, both test suites and the home-lab smoke test run on Debian 13 |
+| [docs/Lateral.pdf](docs/Lateral.pdf) | the original assignment email, printed to PDF |
+| [docs/REBUILD-BRIEF.md](docs/REBUILD-BRIEF.md) | the brief this rebuild was built from |
+
+## The photo app
+
+![Lateral Photos, a sample application that keeps everything in the CMS](docs/images/photos-timeline.png)
+
+**Lateral Photos is a sample client of the CMS, not part of it.** It is a consumer-style photo library (think Google Photos
+without the AI) that keeps everything in the CMS: every photo is a record, every picture an asset that the scanner has cleared. It is
+there to show the CMS being used by a real application. It talks to the CMS only through its public API, via the console's
+server, which holds the CMS credentials. Sign in as `user` / `password` to see only this side. All the screenshots in this
+file are taken from a running copy by `node tools/screenshots/capture.mjs`. How it works and what it does:
+[Photo library](#photo-library-a-sample-application).
 
 ## See it
 
@@ -73,14 +135,14 @@ Anything not fully met says so.
 | **Storage.** Where the database, assets and keys are, how big and how full, and what to back up. | **Home server.** Install, configure, reverse proxy, first sign-in, back up, upgrade. |
 
 
-**Contents:** [See it](#see-it) · [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Accounts](#accounts-sign-in-and-the-operator-command) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
+**Contents:** [Set up and run](#set-up-and-run) · [The CMS](#the-cms) · [The photo app](#the-photo-app) · [See it](#see-it) · [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Accounts](#accounts-sign-in-and-the-operator-command) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
 [Tests](#tests) · [Configuration](#configuration) · [Outside Development](#running-outside-development) ·
 [Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Docs](#docs)
 
 ## Prerequisites
 
 - The **.NET 9 SDK** or newer (the projects target `net9.0` and roll forward, so a machine with only .NET 10 also works).
-- Windows, macOS or Linux. Nothing else to install: the database is a SQLite file.
+- Windows, macOS or Linux (the build, tests and a home-lab smoke test have been run on Debian 13: [linux-testing.md](linux-testing.md)). Nothing else to install: the database is a SQLite file.
 - Optional, for the try-it commands below: `curl` and a POSIX shell (Git Bash on Windows).
 
 ## Run it
@@ -283,6 +345,13 @@ filter on the listing (not built).
 
 ## Engineering console
 
+**Signing in.** The whole console site is behind a sign-in (demo accounts, deliberately simple): **`admin` / `admin`** opens
+everything, and **`user` / `password`** opens the photo library only (its pages, its pictures and the few CMS calls it makes; the
+engineering pages and every other tool are refused). The session is a signed, expiring, HttpOnly, SameSite=Strict cookie, five
+wrong passwords lock a name out for a minute, and there is a Sign out button on every page. Change the people with
+`Console:SignIn:People` (or turn the sign-in off with `Console:SignIn:Enabled=false`, only ever on loopback). These are demo
+passwords on plain HTTP: do not put real ones behind it. The CMS service has its own, separate sign-in (see Accounts).
+
 The second tab of the console site, at `/engineering`, is for testing the service by hand and for explaining it. Credentials
 stay on the console's server; the page only ever names an account. Every call it makes is shown as the curl (or PowerShell,
 or raw HTTP) that repeats it, with the request log docked at the bottom.
@@ -296,7 +365,7 @@ dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console o
 |---|---|
 | **Overview** | Is it healthy now (up, worker, queue, failures, counts), where to start, and a **guided tour** that walks one record through publish, read, replay, unpublish and delete against the real service |
 | **Design and architecture** | Three diagrams with clickable boxes and a walkthrough for each (the architecture, the life of an event, the life of an asset), the reconciliation rules, the guarantees and the tests behind them, the security model, the limits, talking points and a glossary |
-| **Requirements** | The original brief, word for word, beside how each item was met, the requirements and tests that prove it and a live check to try; every one of the tracked requirements, filterable; and what was asked for afterwards. Anything not fully met says so (the repository has not been pushed, and macOS is unverified) |
+| **Requirements** | The original brief, word for word, beside how each item was met, the requirements and tests that prove it and a live check to try; every one of the tracked requirements, filterable; and what was asked for afterwards. Anything not fully met says so (macOS is not green in CI) |
 | **Records** | List what the CMS holds as a user or an admin, filter it, page through it, and drill into one record: its payload, the files it points at, a checksum check, **who can see it** (asked as every caller), the request that fetches it, and what can be done to it |
 | **Assets** | Upload (one `PUT`, or parallel multipart parts), watch the scanner decide, download in parallel ranges and verify the hash, and administer what is stored |
 | **Send events** | Build a batch from a scenario, the form or by editing the JSON, see it as curl, send it as any caller and watch it go from accepted to applied |
@@ -304,6 +373,7 @@ dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the console o
 | **People and sign-in** | Add, disable, re-role, reset and delete people (a temporary password is shown once), check a sign-in, and how to get back in over SSH |
 | **Settings and storage** | Every setting the CMS reads with its value, default, source and purpose; where the database, assets and keys are kept, how big and how full; and a step-by-step guide to running it at home |
 | **Queue and admin** | Live queue depth, oldest wait and a trend line; failed batches with requeue; re-scan of assets cleared by an older scanner; the test-only erase (only while `Admin:AllowReset` is on, which is refused in Production) |
+| **Testing** | Every test in both suites, grouped by class and area, with a plain-English description, the requirements it proves, pass or fail, time taken and the failure message if there is one; filter by result, area or word. It shows the last recorded run: `bash tools/testing/run.sh` runs both suites and refreshes it |
 | **Security and limits** | Who may do what (every endpoint as every caller), a validation suite (one event per rule, at and past each boundary, with the exact reason each must give), sign-in edge cases, and what happens to an oversized body |
 
 The endpoint catalogue behind the workbench is a data file, `wwwroot/endpoints.json`; a service test fails if it stops
@@ -485,11 +555,4 @@ In order of importance (the reasoning and the next step for each is in [DESIGN](
 
 ## Docs
 
-| | |
-|---|---|
-| [docs/DESIGN.md](docs/DESIGN.md) | the decisions, the contract, the rules, the limits |
-| [docs/OPERATIONS.md](docs/OPERATIONS.md) | running it at home: install, configure, sign in, recover over SSH, back up, upgrade |
-| [docs/GUIDELINES.md](docs/GUIDELINES.md) | the rules the code is held to, used as a review checklist |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | every requirement, its priority and evidence, and the tests that prove it |
-| [docs/EVIDENCE.md](docs/EVIDENCE.md) | test counts, the deliberate-defect log, measurements |
-| [docs/REBUILD-BRIEF.md](docs/REBUILD-BRIEF.md) | the brief this rebuild was built from |
+The documentation table is under [The CMS](#documentation-for-the-cms).

@@ -33,6 +33,7 @@ if (!app.Environment.IsDevelopment() && !app.Configuration.GetValue<bool>($"{Con
 
 app.UseSecurityHeaders();
 app.UseLocalRequestGuard();
+app.UseSignIn();
 app.UseDefaultFiles();
 // A development tool: always ask whether a script or style has changed rather than trusting a cached copy.
 app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = context => context.Context.Response.Headers.CacheControl = "no-cache" });
@@ -42,6 +43,7 @@ app.MapGet("/engineering", (IWebHostEnvironment environment) =>
     environment.WebRootFileProvider.GetFileInfo("engineering.html") is { Exists: true } page
         ? Results.Stream(page.CreateReadStream(), "text/html; charset=utf-8")
         : Results.NotFound());
+app.MapSignIn();
 app.MapConsoleEndpoints();
 app.MapMediaEndpoints();
 

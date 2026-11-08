@@ -445,3 +445,10 @@ code.muted { color: var(--muted); }
 .row.between { justify-content: space-between; }
 .search { min-width: 220px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; }
 .step-no { display: inline-grid; place-items: center; width: 24px; height: 24px; margin-right: 6px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+
+/* Testing page */
+#view-testing details.card > summary { cursor: pointer; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#view-testing table td:first-child { width: 84px; }
+#view-testing td code.hint { display: block; margin-top: 2px; }
+#view-testing pre.code { max-height: 220px; overflow: auto; white-space: pre-wrap; }
+#view-requirements pre.brief-original { max-height: 420px; overflow: auto; white-space: pre-wrap; font-size: 12.5px; }

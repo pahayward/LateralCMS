@@ -21,7 +21,7 @@
   <div class="eng">
     <aside class="eng-nav" aria-label="Engineering console">
       <div class="target" id="target">
-        <div class="target-label">Testing the CMS at</div>
+        <div class="target-label" title="The address the console's own server uses to reach the CMS, from the machine it runs on. It is not the address your browser used.">Console server reaches the CMS at</div>
         <code id="cms-url">…</code>
         <div class="row">
           <span id="health-dot" class="dot" title="Not checked yet"></span>
@@ -55,6 +55,8 @@
 
   <div class="toasts" id="eng-toasts" aria-live="polite"></div>
 
+  <script src="session.js"></script>
+  <script src="sha256.js"></script>
   <script src="eng-core.js"></script>
   <script src="eng-overview.js"></script>
   <script src="eng-design.js"></script>
@@ -66,6 +68,7 @@
   <script src="eng-ops.js"></script>
   <script src="eng-accounts.js"></script>
   <script src="eng-settings.js"></script>
+  <script src="eng-testing.js"></script>
   <script src="eng-verify.js"></script>
   <script src="eng-start.js"></script>
 </body>

@@ -334,18 +334,18 @@
           "id": "R8.3",
           "status": "partly",
           "quote": "The solution should work on either Mac or Windows, so build it platform-agnostic.",
-          "how": "Built and tested on Windows only. The code uses no OS-specific paths, and a CI workflow builds and tests on Windows, macOS and Linux with warnings treated as errors.",
-          "gap": "That workflow has never run, because there is no remote to run it on, so macOS and Linux are unverified.",
-          "where": [".github/workflows/ci.yml"],
+          "how": "The code uses no OS-specific paths. A CI workflow builds and tests on Windows, macOS and Linux with warnings treated as errors. Windows and Ubuntu pass in CI, and the build, both test suites and a real-service smoke test also pass by hand on Debian 13 (linux-testing.md).",
+          "gap": "macOS is not green: it passed on CI runs 1 and 2 and failed its Test step on run 3 (the latest), and the log has not been read, so the cause is unknown.",
+          "where": [".github/workflows/ci.yml", "linux-testing.md", "tools/homelab/verify.sh"],
           "reqs": ["DL-04", "DL-03"]
         },
         {
           "id": "R8.4",
-          "status": "open",
+          "status": "met",
           "quote": "Github repo with all the above.",
-          "how": "Everything is in a local git repository with its history, but it has not been pushed anywhere.",
-          "gap": "There is no remote and nothing has been pushed, because publishing is the owner's decision. Until it is pushed, the CI jobs and the cross-platform runs cannot happen.",
-          "where": [],
+          "how": "Everything, with its history, is pushed to github.com/pahayward/LateralCMS, and CI runs on every push.",
+          "gap": "",
+          "where": [".github/workflows/ci.yml"],
           "reqs": ["DL-05"]
         }
       ]

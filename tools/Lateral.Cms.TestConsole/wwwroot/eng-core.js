@@ -43,10 +43,7 @@ function fmtBytes(n) {
   return (i === 0 ? String(value) : value.toFixed(value >= 100 ? 0 : 1)) + ' ' + names[i];
 }
 
-async function sha256Hex(buffer) {
-  const digest = await crypto.subtle.digest('SHA-256', buffer);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
+// sha256Hex comes from sha256.js (it works without crypto.subtle, which plain http on a LAN address lacks)
 
 function shortChecksum(value) {
   if (!value) return '';
