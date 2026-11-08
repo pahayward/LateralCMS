@@ -28,13 +28,13 @@ public static class SignIn
     // Pages and files anyone may fetch without a session: the sign-in page itself.
     private static readonly HashSet<string> Public = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/login", "/login.html", "/login.js", "/site.css", "/api/login", "/api/session", "/favicon.ico",
+        "/login", "/login.html", "/login.js", "/base.js", "/site.css", "/api/login", "/api/session", "/favicon.ico",
     };
 
     // What the photo-library person may fetch besides pictures: the page and its own scripts and styles.
     private static readonly HashSet<string> PhotoFiles = new(StringComparer.OrdinalIgnoreCase)
     {
-        "/", "/index.html", "/photos.css", "/photos-lib.js", "/photos-store.js", "/photos-app.js", "/sha256.js", "/session.js",
+        "/", "/index.html", "/photos.css", "/photos-lib.js", "/photos-store.js", "/photos-app.js", "/sha256.js", "/session.js", "/base.js",
         "/api/config", "/api/logout",
     };
 
@@ -61,7 +61,7 @@ public static class SignIn
         app.MapPost("/api/login", Login);
         app.MapPost("/api/logout", (HttpContext context) =>
         {
-            context.Response.Cookies.Delete(CookieName, new CookieOptions { Path = "/", SameSite = SameSiteMode.Strict });
+            context.Response.Cookies.Delete(CookieName, new CookieOptions { Path = CookiePath(context), SameSite = SameSiteMode.Strict });
             return Results.Ok(new { signedOut = true });
         });
         app.MapGet("/api/session", (HttpContext context, IOptions<ConsoleOptions> options) =>
@@ -99,10 +99,13 @@ public static class SignIn
         var expires = DateTimeOffset.UtcNow.Add(SessionFor);
         context.Response.Cookies.Append(CookieName, Sign(person!.Name, person.Role, expires), new CookieOptions
         {
-            HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = context.Request.IsHttps, Path = "/", Expires = expires,
+            HttpOnly = true, SameSite = SameSiteMode.Strict, Secure = context.Request.IsHttps, Path = CookiePath(context), Expires = expires,
         });
         return Results.Ok(new { name = person.Name, role = person.Role });
     }
+
+    /// <summary>The session cookie belongs to this site only: under a prefix, it is not sent to whatever else shares the address.</summary>
+    private static string CookiePath(HttpContext context) => context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
 
     private static string Sign(string name, string role, DateTimeOffset expires)
     {
@@ -151,7 +154,7 @@ public static class SignIn
             {
                 if (context.Request.Method == "GET" && !path.StartsWith("/api/", StringComparison.Ordinal) && !path.StartsWith("/media/", StringComparison.Ordinal))
                 {
-                    context.Response.Redirect("/login?next=" + Uri.EscapeDataString(path));
+                    context.Response.Redirect(context.Request.PathBase + "/login?next=" + Uri.EscapeDataString(path));
                 }
                 else
                 {
@@ -166,7 +169,7 @@ public static class SignIn
             {
                 if (context.Request.Method == "GET" && !path.StartsWith("/api/", StringComparison.Ordinal) && !path.StartsWith("/media/", StringComparison.Ordinal))
                 {
-                    context.Response.Redirect("/");
+                    context.Response.Redirect(context.Request.PathBase.HasValue ? context.Request.PathBase + "/" : "/");
                     return;
                 }
 

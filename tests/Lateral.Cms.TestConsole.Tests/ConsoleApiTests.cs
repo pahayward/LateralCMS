@@ -430,7 +430,7 @@ public class ConsoleApiTests : IClassFixture<ConsoleFactory>
     private static readonly string[] AllScripts =
     [
         "eng-core.js", "eng-overview.js", "eng-design.js", "eng-requirements.js", "eng-records.js", "eng-events.js", "eng-assets.js", "eng-workbench.js",
-        "eng-ops.js", "eng-accounts.js", "eng-settings.js", "eng-verify.js", "eng-testing.js", "eng-start.js", "sha256.js", "session.js", "photos-lib.js", "photos-store.js", "photos-app.js",
+        "eng-ops.js", "eng-accounts.js", "eng-settings.js", "eng-verify.js", "eng-testing.js", "eng-start.js", "sha256.js", "base.js", "session.js", "photos-lib.js", "photos-store.js", "photos-app.js",
     ];
 
     [Fact]

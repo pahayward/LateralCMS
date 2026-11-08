@@ -62,6 +62,8 @@ public class ConsoleFactory : WebApplicationFactory<Program>
     /// <summary>Most tests are about the console's behaviour, not its sign-in, so it is off unless a test class turns it on.</summary>
     protected virtual bool SignInEnabled => false;
 
+    protected virtual IEnumerable<KeyValuePair<string, string?>> ExtraSettings => [];
+
     public const string CmsUser = "cms-account-name";
     public const string CmsPassword = "cms-password-value";
     public const string UserName = "reader@example.test";
@@ -76,7 +78,7 @@ public class ConsoleFactory : WebApplicationFactory<Program>
     {
         // Not Development, so the CMS's own settings file is never read: only the accounts below exist.
         builder.UseEnvironment("Testing");
-        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(new Dictionary<string, string?>
+        builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(ExtraSettings.Concat(new Dictionary<string, string?>
         {
             ["Console:CmsBaseUrl"] = "http://cms.test",
             ["Console:AllowNonDevelopment"] = "true", // these tests run in the Testing environment
@@ -85,7 +87,7 @@ public class ConsoleFactory : WebApplicationFactory<Program>
             ["Console:Accounts:cms:Password"] = CmsPassword,
             ["Console:Accounts:user:Username"] = UserName,
             ["Console:Accounts:user:Password"] = UserPassword,
-        }));
+        })));
         builder.ConfigureTestServices(services => services.AddHttpClient("cms").ConfigurePrimaryHttpMessageHandler(() => Cms));
     }
 

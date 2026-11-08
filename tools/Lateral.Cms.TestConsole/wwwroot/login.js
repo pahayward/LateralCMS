@@ -19,7 +19,7 @@ form.addEventListener('submit', async (event) => {
     const next = new URLSearchParams(location.search).get('next') || '/';
     // Only ever go to a page on this site, and send the photo-library person to the library.
     const safe = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-    location.replace(body.role === 'admin' ? safe : '/');
+    location.replace(AppPath(body.role === 'admin' ? safe : '/'));
   } catch {
     error.textContent = 'Could not reach the console.';
   } finally {

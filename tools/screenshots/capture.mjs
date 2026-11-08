@@ -3,7 +3,7 @@
 //   node tools/screenshots/capture.mjs [console-url]        default http://localhost:5191
 //   node tools/screenshots/capture.mjs http://localhost:5191 overview people   only those shots
 //
-// Needs the demo CMS and console running (see the README) and Chrome or Edge installed. It drives the browser over the
+// Start the console with Console__SignIn__Enabled=false for this (the shots do not sign in). Needs the demo CMS and console running (see the README) and Chrome or Edge installed. It drives the browser over the
 // DevTools protocol (no packages): load a page, optionally run a little script in it (open a record, run the tour), wait, and
 // save a PNG. The scripts run in the page exactly as a person's clicks would.
 import { spawn } from 'node:child_process';

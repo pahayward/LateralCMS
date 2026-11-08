@@ -189,7 +189,8 @@ The database is migrated when the service starts. Back it up first.
 ## Things to know
 
 - **The console is not part of this.** The photo library and engineering console are development tools: loopback only, behind
-  a demo sign-in (`admin`/`admin` for everything, `user`/`password` for the photo library only), with the CMS's accounts from a
+  a sign-in (`admin` for everything, `user` for the photo library only, each with a random GUID password in
+  `App_Data/console-credentials.json`), with the CMS's accounts from a
   settings file, and they refuse to run outside Development. They can be pointed at a real service
   (`Console__CmsBaseUrl`) for a look, but they are not a household-facing app, and they hold admin credentials.
 - **One instance.** SQLite and one writer; no clustering.
@@ -197,3 +198,25 @@ The database is migrated when the service starts. Back it up first.
 - **Nothing here has been run behind a real reverse proxy.** Check the sign-in throttle sees real client addresses (it logs
   them) and that the cookie is marked Secure (it is when the request arrives as HTTPS, which `X-Forwarded-Proto` from a named
   proxy provides).
+
+## Putting the website on the internet (a tunnel such as ngrok)
+
+For a demo, not a deployment. The console is a development tool that holds the CMS's admin credentials, so treat the `admin` login
+as the keys to everything and give visitors only the `user` login (the photo library).
+
+1. Start the CMS and the console as in the README. The console prints where its sign-in passwords are
+   (`tools/Lateral.Cms.TestConsole/App_Data/console-credentials.json`); never share that file, only the one password you mean to.
+2. The console answers only to the name `localhost` and checks the page's origin, which a tunnel's public host name fails. Put
+   a small proxy in front that rewrites `Host` and `Origin` to `localhost` (the repository's demo used nginx: `proxy_set_header
+   Host localhost;` and an `Origin` map to `http://localhost`) and point the tunnel at the proxy, not at the console.
+3. **Sharing the address with another site** (a free ngrok account has one static domain): set `Console__PathBase=/lateral` and
+   have the proxy send `/lateral/` to the console and everything else to the other site. The console then lives at
+   `https://<your-domain>/lateral/`; its session cookie is scoped to `/lateral`, so the other site never receives it, and the
+   pages add the prefix to every URL they use (`wwwroot/base.js`). Requests without the prefix still work, so the same instance
+   serves `http://localhost:5100/` too. This was checked in a real browser (sign-in, the photo library with an upload, and
+   every engineering page, with no failed request and no request outside the prefix).
+4. Do **not** tunnel the CMS port (5080). The website reaches it for you; the CMS has its own Basic-auth accounts and nothing needs
+   it exposed.
+5. Over the tunnel's https address the session cookie is marked Secure (the console trusts `X-Forwarded-Proto` from a proxy on the
+   same machine). Five wrong passwords lock a name out for a minute; a GUID password cannot be guessed in practice.
+6. Stop the tunnel when the demo is over, and delete `console-credentials.json` to change both passwords.

@@ -15,14 +15,21 @@ dotnet run --project src/Lateral.Cms                 # terminal 1: the CMS servi
 dotnet run --project tools/Lateral.Cms.TestConsole   # terminal 2: the website on http://localhost:5100
 ```
 
-Open <http://localhost:5100> and sign in:
+Open <http://localhost:5100>. It asks you to sign in. There are two accounts, and **their passwords are random GUIDs made the
+first time the website starts** (no password is written in this repository). Read them from the file the website prints the
+location of, `tools/Lateral.Cms.TestConsole/App_Data/console-credentials.json` (private to you and git-ignored; delete it to
+rotate them):
 
-| Sign in as | Name / password | Opens |
+| Sign in as | Name | Opens |
 |---|---|---|
-| Admin | `admin` / `admin` | everything: the photo library and the engineering console (`/engineering`) |
-| User | `user` / `password` | the photo library only |
+| Admin | `admin` | everything: the photo library and the engineering console (`/engineering`) |
+| User | `user` | the photo library only |
 
-These two are demo accounts for the website. The **CMS service's own** accounts (the webhook sender, a reader and an admin for
+```bash
+grep -E '"(Name|Password)"' tools/Lateral.Cms.TestConsole/App_Data/console-credentials.json
+```
+
+Give someone the `user` login to let them try the photo library without the rest. The **CMS service's own** accounts (the webhook sender, a reader and an admin for
 the REST API) are generated the first time it runs into `src/Lateral.Cms/App_Data/dev-credentials.json`; see [Run it](#run-it)
 and [Try it](#try-it) for `curl` examples against the API.
 
@@ -345,12 +352,13 @@ filter on the listing (not built).
 
 ## Engineering console
 
-**Signing in.** The whole console site is behind a sign-in (demo accounts, deliberately simple): **`admin` / `admin`** opens
-everything, and **`user` / `password`** opens the photo library only (its pages, its pictures and the few CMS calls it makes; the
+**Signing in.** The whole console site is behind a sign-in (two accounts with random GUID passwords, generated on first
+run into `App_Data/console-credentials.json`): **`admin`** opens everything, and **`user`** opens the photo library only (its pages, its pictures and the few CMS calls it makes; the
 engineering pages and every other tool are refused). The session is a signed, expiring, HttpOnly, SameSite=Strict cookie, five
-wrong passwords lock a name out for a minute, and there is a Sign out button on every page. Change the people with
-`Console:SignIn:People` (or turn the sign-in off with `Console:SignIn:Enabled=false`, only ever on loopback). These are demo
-passwords on plain HTTP: do not put real ones behind it. The CMS service has its own, separate sign-in (see Accounts).
+wrong passwords lock a name out for a minute, and there is a Sign out button on every page. Set your own people with
+`Console:SignIn:People` (or turn the sign-in off with `Console:SignIn:Enabled=false`, only ever on loopback). Behind a tunnel or
+proxy that serves https, the cookie is marked Secure. The console is still a development tool that holds CMS admin
+credentials: if you publish it, share only the `user` login, and see "Putting it on the internet" in [docs/OPERATIONS.md](docs/OPERATIONS.md). The CMS service has its own, separate sign-in (see Accounts).
 
 The second tab of the console site, at `/engineering`, is for testing the service by hand and for explaining it. Credentials
 stay on the console's server; the page only ever names an account. Every call it makes is shown as the curl (or PowerShell,

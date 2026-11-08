@@ -15,6 +15,12 @@ public sealed class ConsoleOptions
     public int Port { get; set; } = 5100;
 
     /// <summary>
+    /// A path prefix the site is served under, for sharing one public address with another site (for example <c>/lateral</c>). Requests
+    /// without the prefix still work, so one instance can serve the root and the prefix at once. Empty by default.
+    /// </summary>
+    public string PathBase { get; set; } = "";
+
+    /// <summary>
     /// In Development only: the CMS's own development settings file, read for its test accounts so the
     /// credentials live in one place. Ignored if the file does not exist.
     /// </summary>
@@ -62,16 +68,18 @@ public sealed class LimitsOptions
     public long MaxPartBytes { get; set; } = 64L * 1024 * 1024;
 }
 
-/// <summary>Who may open the console. Demo defaults, set in configuration (<c>Console:SignIn:People</c>) for anything else.</summary>
+/// <summary>
+/// Who may open the console. With no <c>Console:SignIn:People</c> configured, <c>admin</c> and <c>user</c> are created with random GUID
+/// passwords kept in <c>App_Data/console-credentials.json</c> (see <see cref="SignInCredentials"/>).
+/// </summary>
 public sealed class SignInOptions
 {
     public bool Enabled { get; set; } = true;
 
-    public List<PersonOptions> People { get; set; } =
-    [
-        new() { Name = "admin", Password = "admin", Role = SignIn.AdminRole },
-        new() { Name = "user", Password = "password", Role = SignIn.UserRole },
-    ];
+    public List<PersonOptions> People { get; set; } = [];
+
+    /// <summary>Where the generated passwords are kept. Relative paths are under the content root.</summary>
+    public string? CredentialsPath { get; set; }
 }
 
 public sealed class PersonOptions

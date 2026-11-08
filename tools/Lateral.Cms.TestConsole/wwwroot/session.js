@@ -5,13 +5,13 @@
   let session;
   try {
     const response = await fetch('/api/session', { headers: { 'X-Console-Request': '1' } });
-    if (response.status === 401) { location.replace('/login?next=' + encodeURIComponent(location.pathname)); return; }
+    if (response.status === 401) { location.replace(AppPath('/login') + '?next=' + encodeURIComponent(AppRelativePath())); return; }
     session = await response.json();
   } catch { return; }
 
   const bar = document.querySelector('.site-bar');
   if (!bar) return;
-  if (session.role !== 'admin') document.querySelectorAll('.site-bar nav a[href="/engineering"]').forEach((a) => a.remove());
+  if (session.role !== 'admin') document.querySelectorAll('.site-bar nav a[href$="/engineering"]').forEach((a) => a.remove());
   if (session.enabled === false) return;
 
   const who = document.createElement('span');
@@ -23,7 +23,7 @@
   out.textContent = 'Sign out';
   out.addEventListener('click', async () => {
     await fetch('/api/logout', { method: 'POST', headers: { 'X-Console-Request': '1' } });
-    location.replace('/login');
+    location.replace(AppPath('/login'));
   });
   who.append(label, out);
   bar.append(who);
