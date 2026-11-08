@@ -36,16 +36,25 @@ public static class SignInCredentials
         ];
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         // Create it private from the start, so the passwords are never readable by another account even for a moment.
-        using (var stream = new FileStream(path, new FileStreamOptions
-        {
-            Mode = FileMode.Create, Access = FileAccess.Write,
-            UnixCreateMode = OperatingSystem.IsWindows() ? null : UnixFileMode.UserRead | UnixFileMode.UserWrite,
-        }))
+        using (var stream = CreatePrivate(path))
         {
             JsonSerializer.Serialize(stream, new { Note = "Sign-in passwords for the website (admin: everything; user: the photo library only). Delete this file to rotate them.", People = made },
                 new JsonSerializerOptions { WriteIndented = true });
         }
 
         return made;
+    }
+
+    // UnixCreateMode is not supported on Windows, and the analyzer (an error in CI) wants the check where the call is, not a
+    // conditional expression around it. Windows files take the folder's access rules, which for App_Data are the user's own.
+    private static FileStream CreatePrivate(string path)
+    {
+        var options = new FileStreamOptions { Mode = FileMode.Create, Access = FileAccess.Write };
+        if (!OperatingSystem.IsWindows())
+        {
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return new FileStream(path, options);
     }
 }

@@ -146,6 +146,7 @@ public class UploadTests(AssetFactory factory) : IClassFixture<AssetFactory>
         Assert.Equal(bytes.Length, body.RootElement.GetProperty("size").GetInt64());
 
         await factory.ScanAllAsync();
+        await factory.ShowAsync(id);
         var served = await factory.User().GetByteArrayAsync($"/api/assets/{id}");
         Assert.Equal(bytes, served);
 
@@ -342,6 +343,7 @@ public class UploadTests(AssetFactory factory) : IClassFixture<AssetFactory>
         Assert.Equal(items.Count, results.Select(r => r.Id).Distinct().Count());
         foreach (var (item, id) in results)
         {
+            await factory.ShowAsync(id);
             Assert.Equal(item.Bytes, await factory.User().GetByteArrayAsync($"/api/assets/{id}"));
         }
     }

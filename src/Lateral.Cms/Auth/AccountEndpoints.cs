@@ -32,9 +32,33 @@ public sealed record UserView(
 /// </summary>
 public static class AccountEndpoints
 {
+    /// <summary>The longest username or password the sign-in route reads (the password rules allow 128; usernames are shorter).</summary>
+    private const int MaxCredentialLength = 256;
+
+    public const string LoginPath = "/api/auth/login";
+
+    /// <summary>A sign-in body is two short strings. Kestrel's default would read up to 30 MB for a caller who has not signed in.</summary>
+    private const long MaxLoginBodyBytes = 8 * 1024;
+
+    /// <summary>
+    /// Caps what the sign-in route will read. It has to be set before the body is bound, which is before any endpoint filter runs,
+    /// so it is a middleware.
+    /// </summary>
+    public static IApplicationBuilder UseLoginBodyLimit(this IApplicationBuilder app) =>
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.Equals(LoginPath, StringComparison.OrdinalIgnoreCase)
+                && context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit)
+            {
+                limit.MaxRequestBodySize = MaxLoginBodyBytes;
+            }
+
+            await next();
+        });
+
     public static IEndpointRouteBuilder MapAccountEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/auth/login", LoginAsync).AllowAnonymous().WithName("SignIn");
+        app.MapPost(LoginPath, LoginAsync).AllowAnonymous().WithName("SignIn");
         // Cast to Delegate: a method that takes only HttpContext and returns a Task is otherwise taken for a raw request delegate, which has
         // no route metadata and so would be missing from the API reference.
         app.MapPost("/api/auth/logout", (Delegate)LogoutAsync).WithName("SignOut");
@@ -60,6 +84,13 @@ public static class AccountEndpoints
         if (string.IsNullOrEmpty(request?.Username) || string.IsNullOrEmpty(request.Password))
         {
             return Problem(StatusCodes.Status400BadRequest, "invalid_request", "Send a username and a password.");
+        }
+
+        // Anyone may call this route, so nothing it is sent may cost much: a password longer than any the service accepts is
+        // refused before it is hashed.
+        if (request.Username.Length > MaxCredentialLength || request.Password.Length > MaxCredentialLength)
+        {
+            return Problem(StatusCodes.Status400BadRequest, "invalid_request", "That username or password is too long.");
         }
 
         // Signing in is not something another site may do on the visitor's behalf (it would put them in the attacker's account).

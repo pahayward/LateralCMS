@@ -58,6 +58,7 @@ public class ScanPipelineTests(AssetFactory factory) : IClassFixture<AssetFactor
         Assert.Equal("mock-1", status.RootElement.GetProperty("scannerVersion").GetString());
         Assert.DoesNotContain(factory.FilesOnDisk(), f => f.EndsWith(id.ToString("N")));
         Assert.Contains(factory.FilesOnDisk(), f => f.EndsWith(AssetFactory.Sha(bytes)) && f.Contains("blobs"));
+        await factory.ShowAsync(id); // users see a file once a record they can see names it
         Assert.Equal(bytes, await factory.User().GetByteArrayAsync($"/api/assets/{id}"));
     }
 
@@ -363,6 +364,7 @@ public class ScanPipelineTests(AssetFactory factory) : IClassFixture<AssetFactor
 
         Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
         await CmsFactory.WaitUntilAsync(async () => await live.StateAsync(id) == "clean", "the worker to clear the asset");
+        await live.ShowAsync(id);
         Assert.Equal(bytes, await live.User().GetByteArrayAsync($"/api/assets/{id}"));
     }
 }

@@ -151,7 +151,7 @@ public static class AssetEndpoints
     private static async Task<IResult> DownloadAsync(Guid id, HttpContext http, AssetService assets, CancellationToken ct)
     {
         // A missing asset and one that is not clean look identical: the API never confirms that something is held back.
-        if (await assets.FindServableAsync(id, ct) is not { } asset)
+        if (await assets.FindServableAsync(id, http.User.IsInRole(Roles.Admin), ct) is not { } asset)
         {
             return NotFound();
         }

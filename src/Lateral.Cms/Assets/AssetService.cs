@@ -341,12 +341,30 @@ public sealed class AssetService(
         await reader.Assets.Where(a => a.Id == id).FirstOrDefaultAsync(cancellationToken) is { } row ? AssetView.From(row) : null;
 
     /// <summary>Only a <b>clean</b> asset can be served; anything else is the same "not found" as an id that never existed.</summary>
-    public async Task<ServableAsset?> FindServableAsync(Guid id, CancellationToken cancellationToken)
+    /// <remarks>
+    /// An admin may fetch any clean asset. Anyone else may fetch it only while a record they can see names it: a file is exactly as
+    /// visible as the record that points at it, so unpublishing, deleting or disabling the record takes its files out of reach too.
+    /// "Names it" means the asset's id appears in the record's payload (the payload's shape is the CMS's, so the id is looked for as
+    /// text). That is a scan of the visible records per download: fine at the size of one household, and the thing to replace with an
+    /// index (asset id to record id, written when the batch is applied) before this serves many records.
+    /// </remarks>
+    public async Task<ServableAsset?> FindServableAsync(Guid id, bool isAdmin, CancellationToken cancellationToken)
     {
         var row = await reader.Assets.Where(a => a.Id == id && a.State == AssetState.Clean).FirstOrDefaultAsync(cancellationToken);
         if (row is null)
         {
             return null;
+        }
+
+        if (!isAdmin)
+        {
+            var needle = "%" + id.ToString("D") + "%";
+            var shown = await reader.Entities.AnyAsync(
+                e => e.IsPublished && !e.IsDisabledByAdmin && EF.Functions.Like(e.Payload, needle), cancellationToken);
+            if (!shown)
+            {
+                return null;
+            }
         }
 
         var path = store.BlobPath(row.Sha256);

@@ -65,8 +65,11 @@ public class AssetFactory : CmsFactory
         return (response, await response.ReadJsonAsync());
     }
 
-    /// <summary>Uploads, scans, and returns the asset id once it is clean. Fails the test if it is not.</summary>
-    public async Task<Guid> CleanAssetAsync(byte[] bytes, string key = "file.bin", string contentType = "application/octet-stream")
+    /// <summary>
+    /// Uploads, scans, and returns the asset id once it is clean. Fails the test if it is not. By default a published record then names
+    /// it, because users may fetch a file only while a record they can see does (pass <c>show: false</c> for a file nothing names).
+    /// </summary>
+    public async Task<Guid> CleanAssetAsync(byte[] bytes, string key = "file.bin", string contentType = "application/octet-stream", bool show = true)
     {
         // Small objects in one PUT; anything bigger the way a real client would: in parts.
         HttpResponseMessage response;
@@ -84,7 +87,24 @@ public class AssetFactory : CmsFactory
         var id = body.RootElement.GetProperty("id").GetGuid();
         await ScanAllAsync();
         Assert.Equal("clean", await StateAsync(id));
+        if (show)
+        {
+            await ShowAsync(id);
+        }
+
         return id;
+    }
+
+    /// <summary>
+    /// Publishes a record that names the asset (as the CMS does once its files are in), so users can see the file. Returns the record's
+    /// id, for the tests that then unpublish, delete or disable it.
+    /// </summary>
+    public async Task<string> ShowAsync(Guid assetId, string? recordId = null)
+    {
+        recordId ??= Evt.Id();
+        using var _ = await Cms().PostOkAsync(Evt.Publish(recordId, 1, 1, new { title = "with a file", file = assetId }));
+        await DrainAsync();
+        return recordId;
     }
 
     /// <summary>

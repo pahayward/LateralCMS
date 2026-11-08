@@ -57,6 +57,10 @@ Proxy__KnownProxies__0=127.0.0.1
   changed while the service runs. In Production people live in the database.
 - **`Auth:Cms`** is the machine account the CMS signs in with. It stays in configuration so it still works when everyone
   else is locked out. To rotate it, add a second GUID (`Auth__Cms__Passwords__1`), switch the CMS to it, then remove the first.
+- **Say where the CMS connects from.** Set `Auth__Cms__AllowedAddresses__0=203.0.113.7` (an address, or a network such as
+  `10.0.0.0/8`; add more with `__1`, `__2`). The CMS credential is then refused from anywhere else, so a leaked copy is no use to
+  someone outside that network. Leave it empty only when the CMS has no fixed address. It needs `Proxy__KnownProxies` when a
+  reverse proxy sits in front, or every request looks like it came from the proxy.
 - `Assets:MaxBytes` is the most the store will hold; set it below the free space of the disk.
 - Production refuses to start with `Admin:AllowReset` on.
 - `/swagger` is the interactive API reference (and `/swagger/v1/swagger.json` its OpenAPI document). Both ask for a username and password
@@ -85,6 +89,19 @@ WantedBy=multi-user.target
 ```
 
 `WorkingDirectory` matters: the service finds `appsettings.json` relative to it.
+
+## Passwords that were once in the repository
+
+Early commits (`b805166`, `55f3eee`) put development passwords for the CMS account in `appsettings.Development.json`, and the
+repository is public. Nothing in the current tree has them (development now generates its own into a git-ignored file), but
+history keeps them. Treat those values as known to everyone:
+
+1. If a deployment ever used one of them, replace it. Print a new one with
+   `dotnet Lateral.Cms.dll admin new-service-secret`, add it as `Auth__Cms__Passwords__1`, switch the CMS over, remove the old
+   `__0`, restart. People's passwords are not affected (they were never in the repository); reset any that you reused with
+   `admin set-password`.
+2. Rewriting history (`git filter-repo`) and force-pushing would hide them from new clones but not from anyone who already has a
+   copy, so the replacement is what matters. Do it only if you also want the old values gone from the public history.
 
 ## Put HTTPS in front
 
@@ -205,7 +222,10 @@ The database is migrated when the service starts. Back it up first.
 ## Putting the website on the internet (a tunnel such as ngrok)
 
 For a demo, not a deployment. The console is a development tool that holds the CMS's admin credentials, so treat the `admin` login
-as the keys to everything and give visitors only the `user` login (the photo library).
+as the keys to everything and give visitors only the `user` login (the photo library). That login can make only the library's own
+calls, each as the one account the library uses for it (reading records as a user, writing as the CMS, removing its own files as
+admin); it cannot read as admin or write as a different account than the library does. It can still do what the library does:
+upload photos, publish and delete photo records, remove files.
 
 1. Start the CMS and the console as in the README. The console prints where its sign-in passwords are
    (`tools/Lateral.Cms.TestConsole/App_Data/console-credentials.json`); never share that file, only the one password you mean to.

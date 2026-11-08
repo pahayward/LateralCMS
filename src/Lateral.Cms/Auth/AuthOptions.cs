@@ -67,6 +67,62 @@ public sealed class CmsAccountOptions
 
     /// <summary>One or more GUIDs. Several may be active at once so the credential can be rotated without downtime.</summary>
     public List<string> Passwords { get; set; } = [];
+
+    /// <summary>
+    /// Where the CMS may connect from: addresses (<c>203.0.113.7</c>) or networks (<c>10.0.0.0/8</c>). Empty means anywhere. When
+    /// set, a request that carries the CMS credential from any other address is refused, so a leaked credential is no use to
+    /// someone who is not on the CMS's network. Behind a proxy, the address is the real client's only if <c>Proxy</c> is configured.
+    /// </summary>
+    public List<string> AllowedAddresses { get; set; } = [];
+}
+
+/// <summary>The rule built from <see cref="CmsAccountOptions.AllowedAddresses"/>.</summary>
+public sealed class CmsAddressRule(IOptions<AuthOptions> options)
+{
+    private readonly System.Net.IPNetwork[] _networks =
+        [.. options.Value.Cms.AllowedAddresses.Select(a => TryParse(a, out var network) ? network : throw new InvalidOperationException("Bad address in Auth:Cms:AllowedAddresses."))];
+
+    public bool Restricts => _networks.Length > 0;
+
+    public bool Allows(System.Net.IPAddress? address)
+    {
+        if (!Restricts)
+        {
+            return true;
+        }
+
+        if (address is null)
+        {
+            return false;
+        }
+
+        var normal = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+        return _networks.Any(n => n.Contains(normal));
+    }
+
+    public static bool TryParse(string? text, out System.Net.IPNetwork network)
+    {
+        network = default;
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        text = text.Trim();
+        if (text.Contains('/'))
+        {
+            return System.Net.IPNetwork.TryParse(text, out network);
+        }
+
+        if (!System.Net.IPAddress.TryParse(text, out var address))
+        {
+            return false;
+        }
+
+        var single = address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
+        network = new System.Net.IPNetwork(single, single.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128);
+        return true;
+    }
 }
 
 public sealed class UserAccountOptions
@@ -107,6 +163,14 @@ public sealed class AuthOptionsValidator : IValidateOptions<AuthOptions>
             if (!Guid.TryParse(options.Cms.Passwords[i], out var guid) || guid == Guid.Empty)
             {
                 errors.Add($"Auth:Cms:Passwords:{i} must be a non-empty GUID.");
+            }
+        }
+
+        for (var i = 0; i < options.Cms.AllowedAddresses.Count; i++)
+        {
+            if (!CmsAddressRule.TryParse(options.Cms.AllowedAddresses[i], out _))
+            {
+                errors.Add($"Auth:Cms:AllowedAddresses:{i} must be an IP address or a network such as 10.0.0.0/8.");
             }
         }
 

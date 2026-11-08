@@ -13,7 +13,8 @@ public sealed class BasicAuthenticationHandler(
     ILoggerFactory loggerFactory,
     UrlEncoder encoder,
     CredentialStore credentials,
-    AuthFailureThrottle throttle)
+    AuthFailureThrottle throttle,
+    CmsAddressRule cmsAddresses)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, loggerFactory, encoder)
 {
     public const string SchemeName = "Basic";
@@ -38,6 +39,17 @@ public sealed class BasicAuthenticationHandler(
         var client = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         if (throttle.IsBlocked(client, out var retryAfter))
         {
+            // The block is a brake on guessing, and the CMS service account cannot be guessed: its secret is a random GUID that
+            // startup insists on, and checking it costs one hash, not a slow password hash. So a correct CMS credential still gets
+            // through from a blocked address; anyone could otherwise lock the CMS out by failing ten times from its address (which
+            // is every caller's address when the service sits behind a proxy that is not configured). Anything else stays blocked.
+            if (TryDecode(parsed.Parameter, out var cmsName, out var cmsPassword)
+                && credentials.Validate(cmsName, cmsPassword) is { } cms
+                && cms.IsInRole(Roles.CmsIngest))
+            {
+                return FromAllowedAddress(cms) ?? AuthenticateResult.Success(new AuthenticationTicket(cms, SchemeName));
+            }
+
             Context.Items[RetryAfterItem] = retryAfter;
             return AuthenticateResult.Fail("Too many failed attempts.");
         }
@@ -52,7 +64,22 @@ public sealed class BasicAuthenticationHandler(
             return AuthenticateResult.Fail("Invalid credentials.");
         }
 
-        return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+        return FromAllowedAddress(principal) ?? AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+    }
+
+    /// <summary>
+    /// A failure if this is the CMS account and the service is told where the CMS connects from and this is somewhere else; null
+    /// otherwise. The credential is right, so it is not counted as a guess: the caller is simply not where the CMS is.
+    /// </summary>
+    private AuthenticateResult? FromAllowedAddress(ClaimsPrincipal principal)
+    {
+        if (!principal.IsInRole(Roles.CmsIngest) || cmsAddresses.Allows(Context.Connection.RemoteIpAddress))
+        {
+            return null;
+        }
+
+        Logger.LogWarning("The CMS credential was presented from an address that is not allowed: {Client}", Context.Connection.RemoteIpAddress);
+        return AuthenticateResult.Fail("Not from an allowed address.");
     }
 
     protected override Task HandleChallengeAsync(AuthenticationProperties properties)

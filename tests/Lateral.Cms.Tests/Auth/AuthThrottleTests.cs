@@ -46,6 +46,21 @@ public class AuthThrottleTests : IClassFixture<AuthThrottleTests.ThrottledFactor
     }
 
     [Fact]
+    public async Task A_blocked_address_cannot_lock_out_the_CMS_whose_secret_cannot_be_guessed()
+    {
+        await FailThreeTimesThenTryAgain(_factory.ClientFor(CmsFactory.UserName, "wrong-password-123"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await _factory.User().GetAsync("/api/entities")).StatusCode);
+
+        // The same address, with the CMS account's right credential: through (a 404 for a batch that does not exist, not a 429).
+        var cms = await _factory.Cms().GetAsync($"/cms/batches/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, cms.StatusCode);
+
+        // The CMS account's WRONG password gets no such pass.
+        var wrong = await _factory.ClientFor(CmsFactory.CmsUser, "00000000-0000-0000-0000-000000000009").GetAsync($"/cms/batches/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.TooManyRequests, wrong.StatusCode);
+    }
+
+    [Fact]
     public async Task The_block_lifts_once_the_window_has_passed()
     {
         await FailThreeTimesThenTryAgain(_factory.ClientFor(CmsFactory.UserName, "wrong-password-123"));

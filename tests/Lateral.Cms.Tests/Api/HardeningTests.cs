@@ -295,6 +295,60 @@ public class HardeningTests
         Assert.Equal(HttpStatusCode.Unauthorized, await factory.BadSignInAsync("203.0.113.9"));
     }
 
+    // ---- the routes anyone can reach cost little ------------------------------------------------------------
+
+    [Fact]
+    [Trait("req", "SH-03")]
+    public async Task The_sign_in_route_refuses_a_giant_body_and_a_giant_password_before_hashing_anything()
+    {
+        using var factory = new CmsFactory();
+        var anonymous = factory.CreateClient();
+
+        var longPassword = await anonymous.PostAsync("/api/auth/login", Evt.Json(new { username = "someone", password = new string('x', 300) }));
+        Assert.Equal(HttpStatusCode.BadRequest, longPassword.StatusCode);
+
+        var huge = await anonymous.PostAsync("/api/auth/login", Evt.Json(new { username = "someone", password = new string('x', 64 * 1024) }));
+        Assert.True(huge.StatusCode is HttpStatusCode.RequestEntityTooLarge or HttpStatusCode.BadRequest, $"got {(int)huge.StatusCode}");
+    }
+
+    [Fact]
+    [Trait("req", "SH-03")]
+    public async Task The_health_route_answers_and_does_not_announce_the_server()
+    {
+        using var factory = new CmsFactory();
+
+        var first = await factory.CreateClient().GetAsync("/health");
+        var second = await factory.CreateClient().GetAsync("/health"); // from the kept answer
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.False(first.Headers.Contains("Server"));
+    }
+
+    public sealed class CmsFromOneNetworkFactory : ThrottledFactory
+    {
+        protected override IEnumerable<KeyValuePair<string, string?>> Proxy =>
+            [new("Proxy:KnownProxies:0", "127.0.0.1"), new("Auth:Cms:AllowedAddresses:0", "203.0.113.0/24")];
+    }
+
+    [Fact]
+    [Trait("req", "SH-03")]
+    public async Task The_CMS_credential_is_refused_from_outside_the_network_it_is_allowed_from()
+    {
+        using var factory = new CmsFromOneNetworkFactory();
+
+        async Task<HttpStatusCode> CmsCallFrom(string address)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/cms/batches/{Guid.NewGuid()}");
+            request.Headers.TryAddWithoutValidation("X-Forwarded-For", address);
+            request.Headers.Authorization = CmsFactory.Basic(CmsFactory.CmsUser, CmsFactory.CmsPassword);
+            return (await factory.CreateClient().SendAsync(request)).StatusCode;
+        }
+
+        Assert.Equal(HttpStatusCode.NotFound, await CmsCallFrom("203.0.113.9")); // allowed: through to a batch that does not exist
+        Assert.Equal(HttpStatusCode.Unauthorized, await CmsCallFrom("198.51.100.1")); // the right credential, the wrong place
+    }
+
     [Fact]
     [Trait("req", "SH-03")]
     public async Task Without_a_trusted_proxy_a_forged_forwarded_for_header_cannot_dodge_the_throttle()
@@ -320,6 +374,7 @@ public class HardeningTests
     [InlineData("Proxy:KnownProxies:0", "not-an-address", "Proxy:KnownProxies")]
     [InlineData("Proxy:KnownNetworks:0", "10.0.0.0", "Proxy:KnownNetworks")]
     [InlineData("Proxy:KnownNetworks:0", "10.0.0.0/99", "Proxy:KnownNetworks")]
+    [InlineData("Auth:Cms:AllowedAddresses:0", "not-an-address", "Auth:Cms:AllowedAddresses")]
     public void An_invalid_proxy_setting_stops_startup_and_names_itself(string key, string value, string expected)
     {
         using var factory = new BadProxyFactory(key, value);

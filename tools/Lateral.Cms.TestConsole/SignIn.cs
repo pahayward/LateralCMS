@@ -38,22 +38,22 @@ public static class SignIn
         "/api/config", "/api/logout",
     };
 
-    // The CMS calls the photo library makes (method, path under /api/cms/). Nothing else is proxied for that person.
-    private static readonly Regex[] PhotoCmsCalls =
+    // The CMS calls the photo library makes (method, path under /api/cms/), each tied to the ONE account the library makes it
+    // as. Nothing else is proxied for that person, and no call may be made as a different account: otherwise the library login
+    // would be an admin login (read unpublished records, delete any file) or a CMS login (publish and delete anything).
+    private static readonly (string Account, Regex Call)[] PhotoCmsCalls =
     [
-        new(@"^GET api/entities(/[^/]+)?$", RegexOptions.Compiled),
-        new(@"^POST cms/events$", RegexOptions.Compiled),
-        new(@"^GET cms/batches/[0-9a-fA-F-]+$", RegexOptions.Compiled),
-        new(@"^GET cms/assets/[0-9a-fA-F-]+$", RegexOptions.Compiled),
-        new(@"^PUT cms/assets/[^/]+$", RegexOptions.Compiled),
-        new(@"^POST cms/assets/uploads$", RegexOptions.Compiled),
-        new(@"^PUT cms/assets/uploads/[0-9a-fA-F-]+/parts/\d+$", RegexOptions.Compiled),
-        new(@"^POST cms/assets/uploads/[0-9a-fA-F-]+/complete$", RegexOptions.Compiled),
-        new(@"^DELETE cms/assets/uploads/[0-9a-fA-F-]+$", RegexOptions.Compiled),
-        new(@"^DELETE api/assets/[0-9a-fA-F-]+$", RegexOptions.Compiled),
+        ("user", new(@"^GET api/entities(/[^/]+)?$", RegexOptions.Compiled)),
+        ("cms", new(@"^POST cms/events$", RegexOptions.Compiled)),
+        ("cms", new(@"^GET cms/batches/[0-9a-fA-F-]+$", RegexOptions.Compiled)),
+        ("cms", new(@"^GET cms/assets/[0-9a-fA-F-]+$", RegexOptions.Compiled)),
+        ("cms", new(@"^PUT cms/assets/[^/]+$", RegexOptions.Compiled)),
+        ("cms", new(@"^POST cms/assets/uploads$", RegexOptions.Compiled)),
+        ("cms", new(@"^PUT cms/assets/uploads/[0-9a-fA-F-]+/parts/\d+$", RegexOptions.Compiled)),
+        ("cms", new(@"^POST cms/assets/uploads/[0-9a-fA-F-]+/complete$", RegexOptions.Compiled)),
+        ("cms", new(@"^DELETE cms/assets/uploads/[0-9a-fA-F-]+$", RegexOptions.Compiled)),
+        ("admin", new(@"^DELETE api/assets/[0-9a-fA-F-]+$", RegexOptions.Compiled)),
     ];
-
-    private static readonly string[] PhotoActAs = ["user", "cms", "admin"];
 
     public static IEndpointRouteBuilder MapSignIn(this IEndpointRouteBuilder app)
     {
@@ -192,7 +192,7 @@ public static class SignIn
         {
             var actAs = context.Request.Headers["X-Console-Act-As"].ToString().Trim().ToLowerInvariant();
             var call = $"{context.Request.Method} {path["/api/cms/".Length..]}";
-            return PhotoActAs.Contains(actAs) && PhotoCmsCalls.Any(r => r.IsMatch(call))
+            return PhotoCmsCalls.Any(c => c.Account == actAs && c.Call.IsMatch(call))
                 ? null
                 : "The photo library may not make that call. Sign in as admin for the engineering console.";
         }

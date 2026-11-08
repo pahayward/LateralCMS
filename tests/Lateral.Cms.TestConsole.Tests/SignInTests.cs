@@ -135,6 +135,13 @@ public class SignInTests : IClassFixture<SignInFactory>
     [InlineData("/api/cms/health", "GET", "anonymous")]
     [InlineData("/api/cms/api/entities", "GET", "wrong")]
     [InlineData("/api/cms/api/entities/x/disable", "POST", "admin")]
+    // Each library call is tied to one account: the library login must not borrow another account's power for it.
+    [InlineData("/api/cms/api/entities", "GET", "admin")]
+    [InlineData("/api/cms/api/entities", "GET", "cms")]
+    [InlineData("/api/cms/cms/events", "POST", "admin")]
+    [InlineData("/api/cms/cms/events", "POST", "user")]
+    [InlineData("/api/cms/api/assets/00000000-0000-0000-0000-000000000001", "DELETE", "cms")]
+    [InlineData("/api/cms/api/assets/00000000-0000-0000-0000-000000000001", "DELETE", "user")]
     public async Task The_photo_library_person_cannot_use_the_consoles_other_tools_or_borrow_other_identities(string path, string method, string actAs)
     {
         var client = Browser();

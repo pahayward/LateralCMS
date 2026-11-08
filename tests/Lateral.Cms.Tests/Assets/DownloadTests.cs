@@ -13,8 +13,34 @@ public class DownloadTests(AssetFactory factory) : IClassFixture<AssetFactory>
 
     private static byte[] Content => AssetFactory.Png(Size, 7);
 
+    // Clean, and named by a published record, so the user in these tests may fetch it.
     private async Task<Guid> CleanAsync(byte[]? bytes = null, string key = "download.png", string declared = "application/octet-stream") =>
         await factory.CleanAssetAsync(bytes ?? Content, key, declared);
+
+    [Fact]
+    public async Task A_user_gets_a_file_only_while_a_record_they_can_see_names_it()
+    {
+        var id = await factory.CleanAssetAsync(Content, "linked.png", "image/png", show: false);
+
+        // Clean but not named by anything: a user is told it does not exist; an admin may fetch it.
+        Assert.Equal(HttpStatusCode.NotFound, (await factory.User().GetAsync($"/api/assets/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await factory.Admin().GetAsync($"/api/assets/{id}")).StatusCode);
+
+        var record = await factory.ShowAsync(id);
+        Assert.Equal(HttpStatusCode.OK, (await factory.User().GetAsync($"/api/assets/{id}")).StatusCode);
+
+        // Taken down by an admin: the record and its file leave together.
+        Assert.True((await factory.Admin().PostAsync($"/api/entities/{record}/disable", null)).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await factory.User().GetAsync($"/api/assets/{id}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await factory.Admin().GetAsync($"/api/assets/{id}")).StatusCode);
+        Assert.True((await factory.Admin().PostAsync($"/api/entities/{record}/enable", null)).IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await factory.User().GetAsync($"/api/assets/{id}")).StatusCode);
+
+        // Unpublished by the CMS, then deleted: still gone for the user.
+        using var unpublished = await factory.Cms().PostOkAsync(Evt.UnPublish(record, 2, 2));
+        await factory.DrainAsync();
+        Assert.Equal(HttpStatusCode.NotFound, (await factory.User().GetAsync($"/api/assets/{id}")).StatusCode);
+    }
 
     private static HttpRequestMessage Get(Guid id, Action<HttpRequestMessage>? configure = null, HttpMethod? method = null)
     {
@@ -227,6 +253,7 @@ public class LargeAssetTests
         Assert.Equal(expected, body.RootElement.GetProperty("sha256").GetString());
         await factory.ScanAllAsync();
         Assert.Equal("clean", await factory.StateAsync(id));
+        await factory.ShowAsync(id);
 
         // Read the whole body through a small buffer, hashing as it goes, and look at what the process allocated meanwhile.
         bytes = [];

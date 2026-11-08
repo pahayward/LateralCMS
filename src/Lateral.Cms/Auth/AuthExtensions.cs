@@ -26,6 +26,7 @@ public static class AuthExtensions
         services.AddSingleton<InitialPasswordFile>();
         services.AddSingleton<CredentialStore>();
         services.AddSingleton<AuthFailureThrottle>();
+        services.AddSingleton<CmsAddressRule>();
 
         // Session cookies are signed with keys kept on disk, so a restart does not sign everybody out.
         services.AddDataProtection().SetApplicationName("Lateral.Cms");

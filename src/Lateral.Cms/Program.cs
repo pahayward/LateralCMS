@@ -34,7 +34,11 @@ if (operatorCommand)
 DevelopmentCredentials.AddIfDevelopment(builder);
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<HealthProbe>();
 builder.Services.AddProblemDetails();
+
+// Do not announce what is serving: no "Server: Kestrel" header for anyone to read.
+builder.WebHost.ConfigureKestrel(kestrel => kestrel.AddServerHeader = false);
 
 // A query value or body that cannot be read is the caller's mistake: a 400 with a problem body. ASP.NET's default in the
 // Development environment is to throw instead, which the exception handler turns into a 500, so say it plainly.
@@ -108,6 +112,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.UseLoginBodyLimit();
 app.UseAuthentication();
 app.UsePasswordChangeRequired();
 app.UseAuthorization();
@@ -124,8 +129,8 @@ app.MapEntityEndpoints();
 app.MapAdminEndpoints();
 app.MapAdminInfoEndpoints();
 
-app.MapGet("/health", async (CmsReadDbContext db, CancellationToken cancellationToken) =>
-        await db.Database.CanConnectAsync(cancellationToken)
+app.MapGet("/health", async (HealthProbe probe, CancellationToken cancellationToken) =>
+        await probe.IsUpAsync(cancellationToken)
             ? Results.Ok(new { status = "ok" })
             : Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable))
     .AllowAnonymous()
