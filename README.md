@@ -254,7 +254,7 @@ curl -sf -u "$ADMIN" "$BASE/api/admin/ingestion"; echo
 
 Files do not travel in events. They go to the asset store, a local approximation of an object store: one `PUT` for small files,
 **multipart upload** (parts in parallel, each checksummed) for large ones, and **ranged, resumable, parallel downloads**. Every
-upload lands in **quarantine**; a background scanner decides; only a **clean** asset can be downloaded, and a flagged one is
+upload lands in **quarantine**; a background scanner decides; only a **clean** asset can be downloaded, and a user gets it only while a published record names it (so taking the record down takes its files too), and a flagged one is
 overwritten and removed (only its verdict stays). The scanner here is a mock that recognises obvious test patterns: it proves the
 pipeline, it is not malware protection. See [DESIGN section 11](docs/DESIGN.md#11-assets-and-scanning).
 
@@ -268,6 +268,10 @@ echo "$ASSET"
 ASSET_ID="$(echo "$ASSET" | sed -E 's/.*"id":"([^"]+)".*/\1/')"
 while curl -sf -u "$CMS" "$BASE/cms/assets/$ASSET_ID" | grep -q '"state":"quarantined"'; do sleep 0.2; done
 curl -sf -u "$CMS" "$BASE/cms/assets/$ASSET_ID"; echo
+# A user gets a file only while a published record names it, so the CMS publishes one that does.
+curl -sf -u "$CMS" -H "Content-Type: application/json" "$BASE/cms/events" \
+  -d "[{\"type\":\"publish\",\"id\":\"file-$ASSET_ID\",\"version\":1,\"timestamp\":\"2024-01-01T00:00:00Z\",\"payload\":{\"title\":\"A file\",\"file\":\"$ASSET_ID\"}}]" > /dev/null
+for _ in $(seq 1 50); do curl -sf -u "$READER" -o /dev/null "$BASE/api/assets/$ASSET_ID" && break; sleep 0.2; done
 curl -sf -u "$READER" "$BASE/api/assets/$ASSET_ID"
 curl -sf -u "$READER" -H "Range: bytes=3-9" "$BASE/api/assets/$ASSET_ID"; echo
 test "$(curl -s -o /dev/null -w '%{http_code}' -u "$CMS" "$BASE/api/assets/$ASSET_ID")" = 403
@@ -301,6 +305,9 @@ BIG_ASSET="$(curl -sf -u "$CMS" -H "Content-Type: application/json" "$BASE/cms/a
 BIG_ID="$(echo "$BIG_ASSET" | sed -E 's/.*"id":"([^"]+)".*/\1/')"
 while curl -sf -u "$CMS" "$BASE/cms/assets/$BIG_ID" | grep -q '"state":"quarantined"'; do sleep 0.2; done
 curl -sf -u "$CMS" "$BASE/cms/assets/$BIG_ID"; echo
+curl -sf -u "$CMS" -H "Content-Type: application/json" "$BASE/cms/events" \
+  -d "[{\"type\":\"publish\",\"id\":\"file-$BIG_ID\",\"version\":1,\"timestamp\":\"2024-01-01T00:00:00Z\",\"payload\":{\"title\":\"A big file\",\"file\":\"$BIG_ID\"}}]" > /dev/null
+for _ in $(seq 1 50); do curl -sf -u "$READER" -o /dev/null -r 0-0 "$BASE/api/assets/$BIG_ID" && break; sleep 0.2; done
 
 curl -sf -u "$READER" -r 0-4999999 -o "$BIG.r1" "$BASE/api/assets/$BIG_ID" &
 curl -sf -u "$READER" -r 5000000-9999999 -o "$BIG.r2" "$BASE/api/assets/$BIG_ID" &
