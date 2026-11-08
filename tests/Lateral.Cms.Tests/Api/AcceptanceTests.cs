@@ -437,7 +437,7 @@ public class AcceptanceTests(CmsFactory factory) : IClassFixture<CmsFactory>
             .Select(r => (string)r[0]!).Where(n => !n.StartsWith("__", StringComparison.Ordinal) && !n.StartsWith("sqlite_", StringComparison.Ordinal));
 
         // Asset bytes live on disk, never in a table, so Events is still the only table that can hold a queued payload.
-        Assert.Equal(["Assets", "AuditLog", "Batches", "Entities", "Events", "Tombstones", "UploadParts", "Uploads", "Users"], tables);
+        Assert.Equal(["AssetLinks", "Assets", "AuditLog", "Batches", "Entities", "Events", "Tombstones", "UploadParts", "Uploads", "Users"], tables);
         var assetColumns = factory.Sql("SELECT name FROM pragma_table_info('Assets')").Select(r => (string)r[0]!).ToList();
         Assert.DoesNotContain(assetColumns, c => c.Contains("Payload", StringComparison.OrdinalIgnoreCase) || c.Contains("Content", StringComparison.Ordinal) && c != "ContentType");
     }

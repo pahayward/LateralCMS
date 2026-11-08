@@ -30,12 +30,13 @@ public class StorageGuaranteeTests(CmsFactory factory) : IClassFixture<CmsFactor
         var indexes = factory.Sql("SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'IX\\_%' ESCAPE '\\' ORDER BY name")
             .Select(r => (string)r[0]!);
 
-        // Three migrations: the core schema, assets and the audit log, then accounts. Each is applied from nothing, in order.
-        Assert.Equal(3, migrations.Count);
+        // Four migrations: the core schema, assets and the audit log, accounts, then the record-to-file links. Each is applied from nothing, in order.
+        Assert.Equal(4, migrations.Count);
         Assert.EndsWith("_Initial", migrations[0]);
         Assert.EndsWith("_Assets", migrations[1]);
         Assert.EndsWith("_Accounts", migrations[2]);
-        Assert.Equal(["Assets", "AuditLog", "Batches", "Entities", "Events", "Tombstones", "UploadParts", "Uploads", "Users"], tables);
+        Assert.EndsWith("_AssetLinks", migrations[3]);
+        Assert.Equal(["AssetLinks", "Assets", "AuditLog", "Batches", "Entities", "Events", "Tombstones", "UploadParts", "Uploads", "Users"], tables);
         Assert.Contains("IX_Batches_Pick", indexes);
         Assert.Contains("IX_Entities_Visible", indexes);
         Assert.Contains("IX_Events_BatchId_Sequence", indexes);

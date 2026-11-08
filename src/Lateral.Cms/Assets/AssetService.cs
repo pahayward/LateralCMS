@@ -343,10 +343,9 @@ public sealed class AssetService(
     /// <summary>Only a <b>clean</b> asset can be served; anything else is the same "not found" as an id that never existed.</summary>
     /// <remarks>
     /// An admin may fetch any clean asset. Anyone else may fetch it only while a record they can see names it: a file is exactly as
-    /// visible as the record that points at it, so unpublishing, deleting or disabling the record takes its files out of reach too.
-    /// "Names it" means the asset's id appears in the record's payload (the payload's shape is the CMS's, so the id is looked for as
-    /// text). That is a scan of the visible records per download: fine at the size of one household, and the thing to replace with an
-    /// index (asset id to record id, written when the batch is applied) before this serves many records.
+    /// visible as the record that points at it, so unpublishing or disabling the record takes its files out of reach (and deleting it
+    /// deletes them, see <c>BatchProcessor</c>). "Names it" is read from the links written when the record was applied: every GUID
+    /// in its payload, since the payload's shape belongs to the CMS.
     /// </remarks>
     public async Task<ServableAsset?> FindServableAsync(Guid id, bool isAdmin, CancellationToken cancellationToken)
     {
@@ -358,9 +357,9 @@ public sealed class AssetService(
 
         if (!isAdmin)
         {
-            var needle = "%" + id.ToString("D") + "%";
-            var shown = await reader.Entities.AnyAsync(
-                e => e.IsPublished && !e.IsDisabledByAdmin && EF.Functions.Like(e.Payload, needle), cancellationToken);
+            var shown = await reader.AssetLinks
+                .Where(l => l.AssetId == id)
+                .AnyAsync(l => reader.Entities.Any(e => e.Id == l.EntityId && e.IsPublished && !e.IsDisabledByAdmin), cancellationToken);
             if (!shown)
             {
                 return null;
@@ -398,6 +397,7 @@ public sealed class AssetService(
 
             quarantine = store.QuarantinePath(id);
             db.Assets.Remove(asset);
+            db.AssetLinks.RemoveRange(await db.AssetLinks.Where(l => l.AssetId == id).ToListAsync(cancellationToken));
             db.Audit(time.GetUtcNow().UtcDateTime, admin, "asset.deleted", id.ToString(), $"was {asset.State}");
             await db.SaveChangesAsync(cancellationToken);
             var shared = await db.Assets.AnyAsync(a => a.Sha256 == asset.Sha256 && a.State != AssetState.Rejected && a.Id != id, cancellationToken);
@@ -411,7 +411,24 @@ public sealed class AssetService(
             await store.WipeAsync(wipe, cancellationToken);
         }
 
+        await TruncateLogAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>Truncates the database's write-ahead log, which holds earlier pages of the rows just deleted. Best effort.</summary>
+    private async Task TruncateLogAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using (await gate.AcquireAsync(cancellationToken))
+            {
+                await db.Database.ExecuteSqlRawAsync("PRAGMA wal_checkpoint(TRUNCATE);", cancellationToken);
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // Overwritten as the database is used; the next checkpoint takes it.
+        }
     }
 
     /// <summary>Puts a clean asset back in quarantine for another scan (for example after the scanner's rules changed). It is not served until it is cleared again.</summary>

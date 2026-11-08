@@ -17,6 +17,22 @@ namespace Lateral.Cms.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.22");
 
+            modelBuilder.Entity("Lateral.Cms.Persistence.AssetLinkRow", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("AssetId", "EntityId");
+
+                    b.HasIndex("EntityId");
+
+                    b.ToTable("AssetLinks", (string)null);
+                });
+
             modelBuilder.Entity("Lateral.Cms.Persistence.AssetRow", b =>
                 {
                     b.Property<Guid>("Id")

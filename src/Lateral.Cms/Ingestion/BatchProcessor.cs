@@ -1,3 +1,4 @@
+using Lateral.Cms.Assets;
 using Lateral.Cms.Domain;
 using Lateral.Cms.Persistence;
 using Microsoft.Data.Sqlite;
@@ -46,6 +47,7 @@ public enum ProcessStep
 /// </remarks>
 public sealed class BatchProcessor(
     CmsWriteDbContext db,
+    Lateral.Cms.Assets.IAssetStore store,
     WriteGate gate,
     QueueBacklog backlog,
     TimeProvider time,
@@ -93,11 +95,15 @@ public sealed class BatchProcessor(
                 .OrderBy(e => e.Sequence)
                 .ToListAsync(cancellationToken);
 
-            await ReduceAsync(queued, now, cancellationToken);
+            var erased = await ReduceAsync(queued, now, cancellationToken);
             batch.Status = BatchState.Completed;
             batch.CompletedAt = now;
             batch.LastError = null;
             await db.SaveChangesAsync(cancellationToken);
+
+            // The rows are gone for good now; take the bytes with them. A crash between the commit and here leaves files that no
+            // row accounts for, which the asset sweeper wipes.
+            await ErasePhysicallyAsync(erased, batchId, cancellationToken);
 
             // Durable now: report.
             Report(batchId, queued);
@@ -126,12 +132,15 @@ public sealed class BatchProcessor(
     /// Folds the queued events per entity id with the pure reducer, then stages the difference between each id's state
     /// before and after as inserts, updates and deletes. Two queries however many events there are.
     /// </summary>
-    private async Task ReduceAsync(List<EventRow> queued, DateTime now, CancellationToken cancellationToken)
+    private async Task<Erasure> ReduceAsync(List<EventRow> queued, DateTime now, CancellationToken cancellationToken)
     {
         if (queued.Count == 0)
         {
-            return;
+            return Erasure.None;
         }
+
+        var deleted = new HashSet<string>(StringComparer.Ordinal);
+        var surviving = new Dictionary<string, HashSet<Guid>>(StringComparer.Ordinal);
 
         var ids = queued.Select(e => e.EntityId!).Distinct(StringComparer.Ordinal).ToList();
         var entities = await db.Entities
@@ -167,6 +176,24 @@ public sealed class BatchProcessor(
                 row.Payload = null;
             }
 
+            if (entity is null)
+            {
+                if (entityRow is not null)
+                {
+                    deleted.Add(group.Key);
+                }
+
+                // A deleted entity keeps nothing that came from its content, not even the hash of it.
+                foreach (var row in group)
+                {
+                    row.PayloadChecksum = null;
+                }
+            }
+            else
+            {
+                surviving[group.Key] = AssetReferences.In(entity.Payload);
+            }
+
             // The persistence layer turns before and after into the right statement. A delete followed by a re-create
             // in the same fold is simply an update of the same row.
             if (entityRow is null && entity is not null)
@@ -192,6 +219,133 @@ public sealed class BatchProcessor(
                 tombstoneRow.RecordedAt = tombstone.RecordedAt;
             }
         }
+
+        return await LinkAndEraseAsync(ids, deleted, surviving, now, cancellationToken);
+    }
+
+    /// <summary>
+    /// Keeps the record-to-file links in step with the records just reduced, and, for each record that was deleted, deletes the files
+    /// only it named: their rows, here, in the same transaction; their bytes afterwards (see <see cref="ErasePhysicallyAsync"/>). A file
+    /// that another record still names stays. Also forgets, for a deleted record, the hash of each earlier version of its content that
+    /// the ledger kept.
+    /// </summary>
+    private async Task<Erasure> LinkAndEraseAsync(
+        List<string> ids, HashSet<string> deleted, Dictionary<string, HashSet<Guid>> surviving, DateTime now, CancellationToken cancellationToken)
+    {
+        var links = await db.AssetLinks.Where(l => ids.Contains(l.EntityId)).ToListAsync(cancellationToken);
+
+        // Surviving records: make their links match their payload.
+        foreach (var (entityId, wanted) in surviving)
+        {
+            var have = links.Where(l => l.EntityId == entityId).ToList();
+            foreach (var stale in have.Where(l => !wanted.Contains(l.AssetId)))
+            {
+                db.AssetLinks.Remove(stale);
+            }
+
+            foreach (var id in wanted.Where(w => have.All(l => l.AssetId != w)))
+            {
+                db.AssetLinks.Add(new AssetLinkRow { AssetId = id, EntityId = entityId });
+            }
+        }
+
+        if (deleted.Count == 0)
+        {
+            return Erasure.None;
+        }
+
+        // Deleted records: drop their links and note which files they named.
+        var named = new HashSet<Guid>();
+        foreach (var link in links.Where(l => deleted.Contains(l.EntityId)))
+        {
+            named.Add(link.AssetId);
+            db.AssetLinks.Remove(link);
+        }
+
+        // The ledger kept a hash of each earlier version's content; that is derived from what is being erased.
+        var olderRows = await db.Events
+            .Where(e => e.PayloadChecksum != null && e.Outcome != EventOutcome.Queued && deleted.Contains(e.EntityId!))
+            .ToListAsync(cancellationToken);
+        foreach (var row in olderRows)
+        {
+            row.PayloadChecksum = null;
+        }
+
+        var paths = new List<string>();
+        if (named.Count > 0)
+        {
+            // Still named by a record this batch did not touch, or by one it just changed to name it.
+            var stillNamed = await db.AssetLinks
+                .Where(l => named.Contains(l.AssetId) && !ids.Contains(l.EntityId))
+                .Select(l => l.AssetId)
+                .ToListAsync(cancellationToken);
+            var keep = stillNamed.Concat(surviving.Values.SelectMany(v => v)).ToHashSet();
+            var orphaned = named.Where(a => !keep.Contains(a)).ToList();
+
+            var assets = await db.Assets.Where(a => orphaned.Contains(a.Id)).ToListAsync(cancellationToken);
+            var shas = assets.Select(a => a.Sha256).Distinct().ToList();
+            var sharedWithOthers = (await db.Assets
+                    .Where(a => shas.Contains(a.Sha256) && a.State != AssetState.Rejected && !orphaned.Contains(a.Id))
+                    .Select(a => a.Sha256)
+                    .ToListAsync(cancellationToken))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var asset in assets)
+            {
+                db.Assets.Remove(asset);
+                db.Audit(now, "system", "asset.deleted", asset.Id.ToString(), $"its record was deleted; was {asset.State}");
+                paths.Add(store.QuarantinePath(asset.Id));
+                if (!sharedWithOthers.Contains(asset.Sha256))
+                {
+                    paths.Add(store.BlobPath(asset.Sha256));
+                }
+            }
+        }
+
+        return new Erasure(paths, deleted.Count);
+    }
+
+    /// <summary>What a batch erased: the files to overwrite and remove, and how many records were deleted.</summary>
+    private sealed record Erasure(List<string> Paths, int Records)
+    {
+        public static readonly Erasure None = new([], 0);
+
+        public bool Any => Records > 0 || Paths.Count > 0;
+    }
+
+    /// <summary>
+    /// After the commit: overwrites and removes the files, then truncates the database's write-ahead log, which still holds the
+    /// earlier pages of the rows that were just deleted (the database itself overwrites freed space, see <c>secure_delete</c>).
+    /// Best effort and logged: anything missed is removed by the sweeper or by the next checkpoint.
+    /// </summary>
+    private async Task ErasePhysicallyAsync(Erasure erased, Guid batchId, CancellationToken cancellationToken)
+    {
+        if (!erased.Any)
+        {
+            return;
+        }
+
+        var failed = 0;
+        foreach (var path in erased.Paths)
+        {
+            if (!await store.WipeAsync(path, cancellationToken))
+            {
+                failed++;
+            }
+        }
+
+        try
+        {
+            await db.Database.ExecuteSqlRawAsync("PRAGMA wal_checkpoint(TRUNCATE);", cancellationToken);
+        }
+        catch (SqliteException ex)
+        {
+            logger.LogWarning(ex, "The write-ahead log could not be truncated after batch {BatchId}; it is overwritten as the database is used", batchId);
+        }
+
+        logger.LogInformation(
+            "Batch {BatchId} deleted {Records} records and erased {Files} files from disk ({Failed} left for the sweeper)",
+            batchId, erased.Records, erased.Paths.Count, failed);
     }
 
     /// <summary>Logs and counts the decided outcomes. Call it only once they are durable.</summary>

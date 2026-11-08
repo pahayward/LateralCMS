@@ -181,6 +181,48 @@
     ]
   },
   {
+    "id": "M100",
+    "area": "Files",
+    "rule": "the write-ahead log is not truncated after a delete, so earlier pages of the deleted rows stay on disk",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "\"PRAGMA wal_checkpoint(TRUNCATE);\"",
+    "replace": "\"PRAGMA wal_checkpoint(PASSIVE);\"",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ErasureTests.Deleting_a_record_leaves_no_trace_of_it_or_its_files_anywhere_on_disk",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M101",
+    "area": "Files",
+    "rule": "the parts of an abandoned upload are unlinked, not overwritten",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "                    Shred(file);",
+    "replace": "                    _ = file;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ErasureTests.Parts_of_an_abandoned_upload_are_overwritten_not_just_unlinked",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M102",
+    "area": "Files",
+    "rule": "the folders a deleted file leaves behind are not removed",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "            PruneEmptyFolders(path);\n            return true;",
+    "replace": "            return true;",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Assets.ErasureTests.Deleting_a_record_leaves_no_trace_of_it_or_its_files_anywhere_on_disk"
+    ]
+  },
+  {
     "id": "M11",
     "area": "Storage",
     "rule": "stop renewing the concurrency token",
@@ -1521,6 +1563,51 @@
     "failed": [
       "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
       "Lateral.Cms.Tests.Api.ApiDocsTests.Each_route_names_the_callers_the_role_matrix_proves_can_use_it"
+    ]
+  },
+  {
+    "id": "M97",
+    "area": "Files",
+    "rule": "deleting a record leaves the files only it names",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "if (named.Count > 0)",
+    "replace": "if (false && named.Count > 0)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ErasureTests.A_file_two_records_name_goes_only_with_the_last_of_them",
+      "Lateral.Cms.Tests.Assets.ErasureTests.Deleting_a_record_leaves_no_trace_of_it_or_its_files_anywhere_on_disk",
+      "Lateral.Cms.Tests.Assets.ErasureTests.A_deleted_record_takes_a_file_that_is_still_being_scanned_with_it",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Assets.ErasureTests.Identical_bytes_in_two_files_stay_until_the_last_file_is_gone"
+    ]
+  },
+  {
+    "id": "M98",
+    "area": "Files",
+    "rule": "deleting a record also deletes a file another record still names",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "var orphaned = named.Where(a => !keep.Contains(a)).ToList();",
+    "replace": "var orphaned = named.ToList();",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Assets.ErasureTests.A_file_two_records_name_goes_only_with_the_last_of_them",
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
+    ]
+  },
+  {
+    "id": "M99",
+    "area": "Files",
+    "rule": "the ledger keeps the hash of a deleted record's earlier content",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "            row.PayloadChecksum = null;\n        }\n\n        var paths",
+    "replace": "            _ = row;\n        }\n\n        var paths",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Assets.ErasureTests.Deleting_a_record_leaves_no_trace_of_it_or_its_files_anywhere_on_disk"
     ]
   }
 ]

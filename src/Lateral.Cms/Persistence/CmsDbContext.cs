@@ -21,6 +21,8 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
 
     public DbSet<AssetRow> Assets => Set<AssetRow>();
 
+    public DbSet<AssetLinkRow> AssetLinks => Set<AssetLinkRow>();
+
     public DbSet<UploadRow> Uploads => Set<UploadRow>();
 
     public DbSet<UploadPartRow> UploadParts => Set<UploadPartRow>();
@@ -121,6 +123,14 @@ public abstract class CmsDbContext(DbContextOptions options) : DbContext(options
             // Serves "which asset to scan next" (quarantined, due, oldest first) and the quota sums, as index seeks.
             asset.HasIndex(a => new { a.State, a.NextAttemptAt, a.CreatedAt }).HasDatabaseName("IX_Assets_Scan");
             asset.HasIndex(a => a.Sha256);
+        });
+
+        modelBuilder.Entity<AssetLinkRow>(link =>
+        {
+            link.ToTable("AssetLinks");
+            link.HasKey(l => new { l.AssetId, l.EntityId });
+            link.Property(l => l.EntityId).HasMaxLength(200).IsRequired();
+            link.HasIndex(l => l.EntityId); // "which files does this record name", for updates and deletes
         });
 
         modelBuilder.Entity<UploadRow>(upload =>

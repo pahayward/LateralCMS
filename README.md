@@ -254,7 +254,7 @@ curl -sf -u "$ADMIN" "$BASE/api/admin/ingestion"; echo
 
 Files do not travel in events. They go to the asset store, a local approximation of an object store: one `PUT` for small files,
 **multipart upload** (parts in parallel, each checksummed) for large ones, and **ranged, resumable, parallel downloads**. Every
-upload lands in **quarantine**; a background scanner decides; only a **clean** asset can be downloaded, and a user gets it only while a published record names it (so taking the record down takes its files too), and a flagged one is
+upload lands in **quarantine**; a background scanner decides; only a **clean** asset can be downloaded, and a user gets it only while a published record names it (unpublishing hides its files; **deleting the record deletes them**, overwritten and removed from disk along with the record's database pages), and a flagged one is
 overwritten and removed (only its verdict stays). The scanner here is a mock that recognises obvious test patterns: it proves the
 pipeline, it is not malware protection. See [DESIGN section 11](docs/DESIGN.md#11-assets-and-scanning).
 

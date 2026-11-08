@@ -770,5 +770,53 @@
     "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
     "find": "Policies.AdminOnly => \"an admin only.\",",
     "replace": "Policies.AdminOnly => \"a signed-in user or admin.\","
+  },
+  {
+    "id": "M97",
+    "area": "Files",
+    "rule": "deleting a record leaves the files only it names",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "if (named.Count > 0)",
+    "replace": "if (false && named.Count > 0)"
+  },
+  {
+    "id": "M98",
+    "area": "Files",
+    "rule": "deleting a record also deletes a file another record still names",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "var orphaned = named.Where(a => !keep.Contains(a)).ToList();",
+    "replace": "var orphaned = named.ToList();"
+  },
+  {
+    "id": "M99",
+    "area": "Files",
+    "rule": "the ledger keeps the hash of a deleted record's earlier content",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "            row.PayloadChecksum = null;\n        }\n\n        var paths",
+    "replace": "            _ = row;\n        }\n\n        var paths"
+  },
+  {
+    "id": "M100",
+    "area": "Files",
+    "rule": "the write-ahead log is not truncated after a delete, so earlier pages of the deleted rows stay on disk",
+    "file": "src/Lateral.Cms/Ingestion/BatchProcessor.cs",
+    "find": "\"PRAGMA wal_checkpoint(TRUNCATE);\"",
+    "replace": "\"PRAGMA wal_checkpoint(PASSIVE);\""
+  },
+  {
+    "id": "M101",
+    "area": "Files",
+    "rule": "the parts of an abandoned upload are unlinked, not overwritten",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "                    Shred(file);",
+    "replace": "                    _ = file;"
+  },
+  {
+    "id": "M102",
+    "area": "Files",
+    "rule": "the folders a deleted file leaves behind are not removed",
+    "file": "src/Lateral.Cms/Assets/FileAssetStore.cs",
+    "find": "            PruneEmptyFolders(path);\n            return true;",
+    "replace": "            return true;"
   }
 ]

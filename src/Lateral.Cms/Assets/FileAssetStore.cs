@@ -123,7 +123,7 @@ public sealed class FileAssetStore : IAssetStore
                 file.Flush(flushToDisk: true);
             }
 
-            File.Move(temp, destination, overwrite: true);
+            MoveOver(temp, destination);
             return new StoredFile(total, Convert.ToHexStringLower(hash.GetHashAndReset()));
         }
         catch
@@ -160,7 +160,7 @@ public sealed class FileAssetStore : IAssetStore
                 output.Flush(flushToDisk: true);
             }
 
-            File.Move(temp, destination, overwrite: true);
+            MoveOver(temp, destination);
             return new StoredFile(total, Convert.ToHexStringLower(hash.GetHashAndReset()));
         }
         catch
@@ -168,6 +168,17 @@ public sealed class FileAssetStore : IAssetStore
             TryDelete(temp);
             throw;
         }
+    }
+
+    /// <summary>Renames <paramref name="temp"/> into place. A file already there is overwritten with zeros first, not just unlinked.</summary>
+    private static void MoveOver(string temp, string destination)
+    {
+        if (File.Exists(destination))
+        {
+            Shred(destination);
+        }
+
+        File.Move(temp, destination, overwrite: true);
     }
 
     public async Task PromoteAsync(string quarantinePath, string sha256, CancellationToken cancellationToken)
@@ -207,6 +218,7 @@ public sealed class FileAssetStore : IAssetStore
             }
 
             File.Delete(path);
+            PruneEmptyFolders(path);
             return true;
         }
         catch (IOException)
@@ -219,6 +231,67 @@ public sealed class FileAssetStore : IAssetStore
         }
     }
 
+    /// <summary>
+    /// Overwrites with zeros, flushes to disk and deletes, synchronously. For the small things that are not worth an await (a temp
+    /// file that failed half way, a part that is being replaced). Never throws: what cannot be removed is left to the sweeper.
+    /// </summary>
+    private static void Shred(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            using (var file = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete, BufferSize))
+            {
+                var zeros = new byte[BufferSize];
+                for (long written = 0; written < file.Length; written += zeros.Length)
+                {
+                    file.Write(zeros, 0, (int)Math.Min(zeros.Length, file.Length - written));
+                }
+
+                file.Flush(flushToDisk: true);
+            }
+
+            File.Delete(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Zeroed or not, the sweeper will try again.
+        }
+    }
+
+    /// <summary>Removes the folders a delete has emptied (the two fan-out levels under blobs), so no trace of a name or a count is left.</summary>
+    private void PruneEmptyFolders(string deletedFile)
+    {
+        try
+        {
+            var area = Path.GetDirectoryName(deletedFile)!.StartsWith(Path.Combine(_root, "blobs"), StringComparison.Ordinal)
+                ? Path.Combine(_root, "blobs")
+                : null;
+            if (area is null)
+            {
+                return;
+            }
+
+            for (var folder = Path.GetDirectoryName(deletedFile); folder is not null && folder.Length > area.Length; folder = Path.GetDirectoryName(folder))
+            {
+                if (Directory.EnumerateFileSystemEntries(folder).Any())
+                {
+                    return;
+                }
+
+                Directory.Delete(folder);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Another upload may be filling it right now; an empty folder holds nothing.
+        }
+    }
+
     public void DeleteUploadParts(Guid uploadId)
     {
         var directory = Path.GetDirectoryName(PartPath(uploadId, 1))!;
@@ -226,6 +299,11 @@ public sealed class FileAssetStore : IAssetStore
         {
             if (Directory.Exists(directory))
             {
+                foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+                {
+                    Shred(file);
+                }
+
                 Directory.Delete(directory, recursive: true);
             }
         }
@@ -252,15 +330,6 @@ public sealed class FileAssetStore : IAssetStore
     /// <summary>True for the half-written temp files that <see cref="SaveAsync"/> and <see cref="AssembleAsync"/> leave if the process dies.</summary>
     public static bool IsTemp(FileInfo file) => file.Name.Contains(TempMarker, StringComparison.Ordinal);
 
-    private static void TryDelete(string path)
-    {
-        try
-        {
-            File.Delete(path);
-        }
-        catch (IOException)
-        {
-            // best effort; the sweeper removes stale temp files
-        }
-    }
+    // A temp file that failed half way holds real content: overwrite it, do not just unlink it.
+    private static void TryDelete(string path) => Shred(path);
 }

@@ -59,6 +59,19 @@ public sealed class AssetRow
     public string? LastError { get; set; }
 }
 
+/// <summary>
+/// Which records name which files: one row per (file id, record id) for every file-id-shaped text in the record's current payload.
+/// Written in the same transaction that applies the record, so it always matches. It is what lets a user download exactly the files
+/// of records they can see, and what makes deleting a record delete its files. Holds ids only, never content.
+/// </summary>
+public sealed class AssetLinkRow
+{
+    /// <summary>A GUID found in the payload. There is no foreign key: the file may arrive after the record that names it.</summary>
+    public Guid AssetId { get; set; }
+
+    public string EntityId { get; set; } = "";
+}
+
 /// <summary>A multipart upload in progress.</summary>
 public sealed class UploadRow
 {
