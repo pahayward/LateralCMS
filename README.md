@@ -72,7 +72,7 @@ clickable in the engineering console, beside two more (the life of an event and 
   password ever in a log.
 - **Made to be run at home.** A first-run administrator, an SSH command that resets any password, every setting and storage
   path on view, and a [home-server guide](docs/OPERATIONS.md).
-- **Proven, not claimed.** 702 service tests and 165 console tests; 96 deliberate defects planted one at a time and each caught
+- **Proven, not claimed.** 703 service tests and 165 console tests; 96 deliberate defects planted one at a time and each caught
   by a test ([evidence](docs/EVIDENCE.md)); every original requirement traced to how it was met, including the ones that were not.
 
 ### Documentation for the CMS
@@ -527,6 +527,10 @@ DOTNET_ROLL_FORWARD=Major dotnet ef migrations add <Name> --project src/Lateral.
 **Swagger.** The whole API is described, and can be tried, at `/swagger` (the OpenAPI document is `/swagger/v1/swagger.json`). The browser asks for a
 username and password, press **Authorize** to use the same ones for the calls you try. It is read from the routes the service really maps, so
 it cannot list one that is gone, and a test fails if a route has no explanation or names the wrong callers. Switch it off with `ApiDocs:Enabled=false`.
+
+**Postman.** [docs/postman](docs/postman) has a collection with a request for every route and an environment for a local run. Import both, fill in the three
+passwords, and send the folders in order: events, records, files, then the admin side. Each request saves the ids it gets back for the next one. A test fails if a
+route and a request ever drift apart; regenerate with `node tools/postman/build.mjs`.
 
 | ![Swagger UI showing every route of the CMS API, grouped by who uses it](docs/images/swagger.png) | ![One route opened: what it is for, who may call it, an example body and every status it gives](docs/images/swagger-events.png) |
 |---|---|

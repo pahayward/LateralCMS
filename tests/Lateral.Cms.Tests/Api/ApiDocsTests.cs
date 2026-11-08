@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Lateral.Cms.ApiDocs;
+using Lateral.Cms.Tests.Domain;
 
 using Lateral.Cms.Tests.Infrastructure;
 using Microsoft.AspNetCore.Routing;
@@ -212,6 +213,28 @@ public class ApiDocsTests(CmsFactory factory) : IClassFixture<CmsFactory>
             Assert.Equal("binary", operation.GetProperty("requestBody").GetProperty("content").GetProperty("application/octet-stream").GetProperty("schema").GetProperty("format").GetString());
             Assert.Contains(operation.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "X-Content-SHA256" && p.GetProperty("in").GetString() == "header");
         }
+    }
+
+    [Fact]
+    public async Task The_Postman_collection_has_a_request_for_every_route_and_none_for_a_route_that_is_not_there()
+    {
+        using var document = await ReadDocumentAsync();
+        var routes = Operations(document).Select(o => $"{o.Method} {System.Text.RegularExpressions.Regex.Replace(o.Path, @"{[^}]+}", "{}")}").ToHashSet();
+
+        var path = Path.Combine(DomainArchitectureTests.RepositoryRoot(), "docs", "postman", "Lateral-CMS.postman_collection.json");
+        using var collection = JsonDocument.Parse(File.ReadAllText(path));
+        static IEnumerable<JsonElement> Requests(JsonElement items) => items.EnumerateArray()
+            .SelectMany(i => i.TryGetProperty("item", out var inner) ? Requests(inner) : [i]);
+        var listed = Requests(collection.RootElement.GetProperty("item")).Select(i =>
+        {
+            var request = i.GetProperty("request");
+            var raw = request.GetProperty("url").GetProperty("raw").GetString()!.Replace("{{baseUrl}}", "").Split('?')[0];
+            return $"{request.GetProperty("method").GetString()} {System.Text.RegularExpressions.Regex.Replace(raw, @"{{[^}]+}}", "{}")}";
+        }).ToHashSet();
+
+        // Regenerate with: node tools/postman/build.mjs (add the request to the table there).
+        Assert.Empty(routes.Except(listed));
+        Assert.Empty(listed.Except(routes));
     }
 
     [Fact]

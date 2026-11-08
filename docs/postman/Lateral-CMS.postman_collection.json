@@ -1,0 +1,1308 @@
+{
+  "info": {
+    "name": "Lateral CMS",
+    "description": "Every route of the Lateral CMS API, ready to send. Pick the \"Lateral CMS - local\" environment and fill in the passwords first.\n\nFolders are in the order you would use them: send events as the CMS, follow the batch, read the record, upload a file, download it, then the admin side. Requests save the ids they get back (batchId, entityId, assetId, uploadId) so the next one just works.\n\nThe same API is described, and can be tried, at {{baseUrl}}/swagger.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "{{adminUser}}",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "{{adminPassword}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.variables.set('version', String(Date.now()));"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1. CMS: events",
+      "description": "The CMS service account sends events and follows its batches.",
+      "item": [
+        {
+          "name": "Send a publish",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "Publishes (creates or updates) a record. A 202 means the batch is stored durably, not yet applied. The X-Correlation-Id header is its batch id.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"type\": \"publish\",\n    \"id\": \"{{eventId}}\",\n    \"version\": {{version}},\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"payload\": {\n      \"title\": \"Hello from Postman\",\n      \"note\": \"change me\"\n    }\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.headers.get('X-Correlation-Id'); if (id) pm.collectionVariables.set('batchId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send an unpublish",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "Hides the record from users but keeps it (admins still see it). Needs a higher version than the last event for the same id; each send makes one.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"type\": \"unPublish\",\n    \"id\": \"{{eventId}}\",\n    \"version\": {{version}},\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"payload\": {\n      \"title\": \"Hello from Postman\"\n    }\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.headers.get('X-Correlation-Id'); if (id) pm.collectionVariables.set('batchId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send a delete",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "Removes the record and its content, leaving only a tombstone. A delete carries no version and no payload.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"type\": \"delete\",\n    \"id\": \"{{eventId}}\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.headers.get('X-Correlation-Id'); if (id) pm.collectionVariables.set('batchId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send a mixed batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "events"
+              ],
+              "query": []
+            },
+            "description": "Several events at once. Order inside the batch does not matter; the end state is the same.",
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"type\": \"publish\",\n    \"id\": \"postman-a\",\n    \"version\": {{version}},\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"payload\": {\n      \"title\": \"A\"\n    }\n  },\n  {\n    \"type\": \"publish\",\n    \"id\": \"postman-b\",\n    \"version\": {{version}},\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"payload\": {\n      \"title\": \"B\"\n    }\n  },\n  {\n    \"type\": \"delete\",\n    \"id\": \"postman-never-existed\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.headers.get('X-Correlation-Id'); if (id) pm.collectionVariables.set('batchId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Follow the batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cms/batches/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "batches",
+                "{{batchId}}"
+              ],
+              "query": []
+            },
+            "description": "queued, completed, or failed, with each event's outcome (applied, ignored_stale, ...). Send again until it says completed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('found (200)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{cmsUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{cmsPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "2. Records",
+      "description": "Reading what the events built. Nothing here can change a record's content.",
+      "item": [
+        {
+          "name": "List records",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entities?limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "A page of records in id order. Pass the nextCursor from one page as cursor to get the next. Admins also see unpublished and disabled records."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = (pm.response.json().items || []); if (items.length) pm.collectionVariables.set('entityId', items[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read one record",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entities/{{entityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entities",
+                "{{entityId}}"
+              ],
+              "query": []
+            },
+            "description": "One record. A hidden record answers 404, the same as one that does not exist."
+          }
+        },
+        {
+          "name": "Disable a record (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entities/{{entityId}}/disable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entities",
+                "{{entityId}}",
+                "disable"
+              ],
+              "query": []
+            },
+            "description": "Hides it from users, keeps it. A later publish does not undo it."
+          }
+        },
+        {
+          "name": "Enable a record (admin)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/entities/{{entityId}}/enable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "entities",
+                "{{entityId}}",
+                "enable"
+              ],
+              "query": []
+            },
+            "description": "Reverses a disable."
+          }
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{adminUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{adminPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "3. CMS: files",
+      "description": "The CMS uploads files: one request for a small file, or a multipart upload for a big one.",
+      "item": [
+        {
+          "name": "Upload a small file",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/{{assetKey}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "{{assetKey}}"
+              ],
+              "query": []
+            },
+            "description": "The body is the file as is. Here it is a line of text; in Postman choose Body > binary to send a real picture. The file waits in quarantine until the scanner says clean.",
+            "body": {
+              "mode": "raw",
+              "raw": "Hello from Postman",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.json().id; if (id) pm.collectionVariables.set('assetId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start a multipart upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/uploads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "uploads"
+              ],
+              "query": []
+            },
+            "description": "For large files. Give the key, type and total size in bytes. The demo is 11 bytes, one part.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"multipart-demo.txt\",\n  \"contentType\": \"text/plain\",\n  \"size\": 11\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('created (201)', () => pm.response.to.have.status(201));",
+                  "const id = pm.response.json().uploadId; if (id) pm.collectionVariables.set('uploadId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload a part",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/uploads/{{uploadId}}/parts/{{partNumber}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "uploads",
+                "{{uploadId}}",
+                "parts",
+                "{{partNumber}}"
+              ],
+              "query": []
+            },
+            "description": "Send each part's bytes as the body. Parts may go in parallel, and sending the same part again is harmless. The demo sends part 1 (partNumber), which is exactly 11 bytes.",
+            "body": {
+              "mode": "raw",
+              "raw": "hello world",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('part stored (200)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complete the upload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/uploads/{{uploadId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "uploads",
+                "{{uploadId}}",
+                "complete"
+              ],
+              "query": []
+            },
+            "description": "List the parts in order. The service joins them, checks the size, and queues the file for scanning.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parts\": [\n    {\n      \"partNumber\": 1\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('accepted (202)', () => pm.response.to.have.status(202));",
+                  "const id = pm.response.json().id; if (id) pm.collectionVariables.set('assetId', id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel a multipart upload",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/uploads/{{uploadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "uploads",
+                "{{uploadId}}"
+              ],
+              "query": []
+            },
+            "description": "Throws the parts away. Start a new upload first; a finished one cannot be cancelled."
+          }
+        },
+        {
+          "name": "Follow the file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cms/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cms",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": []
+            },
+            "description": "quarantined, clean or rejected, with the scanner's verdict. Never the bytes."
+          }
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{cmsUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{cmsPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "4. Files",
+      "description": "Downloading. Only a clean file exists for users.",
+      "item": [
+        {
+          "name": "Download a file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": []
+            },
+            "description": "The bytes. Add a Range header (for example bytes=0-4) to get part of it (206)."
+          }
+        },
+        {
+          "name": "Download part of a file",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=0-4"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": []
+            },
+            "description": "Range: bytes=0-4 gives the first five bytes with a 206."
+          }
+        },
+        {
+          "name": "Headers only",
+          "request": {
+            "method": "HEAD",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": []
+            },
+            "description": "Size, type and ETag (the file's SHA-256) without the bytes."
+          }
+        },
+        {
+          "name": "Delete a file (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": []
+            },
+            "description": "Overwrites and removes the stored bytes. Cannot be undone."
+          }
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{adminUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{adminPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "5. Admin: people",
+      "description": "Who can sign in. Admins only.",
+      "item": [
+        {
+          "name": "List people",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ],
+              "query": []
+            },
+            "description": "Everyone who can sign in, never their password hashes."
+          }
+        },
+        {
+          "name": "Add a person",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ],
+              "query": []
+            },
+            "description": "Role is User or Admin. Leave password out and one is made and returned once as temporaryPassword.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{newUser}}\",\n  \"role\": \"User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Change role or disable",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{newUser}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{newUser}}"
+              ],
+              "query": []
+            },
+            "description": "Send role, disabled, or both. Not the last admin, not yourself.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"User\",\n  \"disabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reset a password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{newUser}}/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{newUser}}",
+                "password"
+              ],
+              "query": []
+            },
+            "description": "Leave password out to get a generated one. Ends all of that person's sessions.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mustChange\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign a person out everywhere",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{newUser}}/revoke-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{newUser}}",
+                "revoke-sessions"
+              ],
+              "query": []
+            },
+            "description": "Ends every session of that person."
+          }
+        },
+        {
+          "name": "Delete a person",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{newUser}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{newUser}}"
+              ],
+              "query": []
+            },
+            "description": "Not the last admin, not yourself."
+          }
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{adminUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{adminPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "6. Admin: running it",
+      "description": "Settings, storage and the two queues. Admins only.",
+      "item": [
+        {
+          "name": "Show every setting",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settings"
+              ],
+              "query": []
+            },
+            "description": "Each setting, its value, default, where it came from and what it is for. Secrets only as set or not set."
+          }
+        },
+        {
+          "name": "Show where data is kept",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/storage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "storage"
+              ],
+              "query": []
+            },
+            "description": "Database, asset and key folders with sizes and free space."
+          }
+        },
+        {
+          "name": "Show the batch queue",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ingestion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ingestion"
+              ],
+              "query": []
+            },
+            "description": "Waiting, applying, done and set-aside batches, and the oldest wait."
+          }
+        },
+        {
+          "name": "Retry a failed batch",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/ingestion/{{batchId}}/requeue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "ingestion",
+                "{{batchId}}",
+                "requeue"
+              ],
+              "query": []
+            },
+            "description": "409 unless that batch failed and was set aside."
+          }
+        },
+        {
+          "name": "List files with their state",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/assets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "assets"
+              ],
+              "query": []
+            },
+            "description": "Every file, newest first. Add ?state=rejected to filter."
+          }
+        },
+        {
+          "name": "Scan a file again",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/assets/{{assetId}}/rescan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "assets",
+                "{{assetId}}",
+                "rescan"
+              ],
+              "query": []
+            },
+            "description": "Only a clean file can be scanned again (409 otherwise)."
+          }
+        },
+        {
+          "name": "Retry a file the scanner gave up on",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/assets/{{assetId}}/requeue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "assets",
+                "{{assetId}}",
+                "requeue"
+              ],
+              "query": []
+            },
+            "description": "409 unless that file's scanning was set aside."
+          }
+        },
+        {
+          "name": "Scan again everything an older scanner checked",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/assets/rescan-outdated",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "assets",
+                "rescan-outdated"
+              ],
+              "query": []
+            },
+            "description": "Queues every file whose scanner version is not the current one."
+          }
+        }
+      ],
+      "auth": {
+        "type": "basic",
+        "basic": [
+          {
+            "key": "username",
+            "value": "{{adminUser}}",
+            "type": "string"
+          },
+          {
+            "key": "password",
+            "value": "{{adminPassword}}",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "name": "7. Health",
+      "description": "",
+      "item": [
+        {
+          "name": "Is it up",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "query": []
+            },
+            "description": "No sign-in needed. 200 when the database can be reached.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Sign-in",
+      "description": "Everything else in this collection signs in with Basic credentials on each request; these routes are for a browser-style session. Last, because Change my password changes the password the other requests use: update adminPassword in the environment afterwards.",
+      "item": [
+        {
+          "name": "Sign in (session cookie)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Exchanges a username and password for a cookie that Postman keeps. mustChangePassword says if a new password is needed first.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{adminUser}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "The caller's username, role and how they signed in."
+          }
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "postman"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password"
+              ],
+              "query": []
+            },
+            "description": "Needs the current password. Change newPassword before sending.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current\": \"{{adminPassword}}\",\n  \"newPassword\": \"change-me-to-something-long\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "postman"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ],
+              "query": []
+            },
+            "description": "Ends the session cookie. A call that changes something with a cookie must send X-Requested-With.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "eventId",
+      "value": "postman-demo-1"
+    },
+    {
+      "key": "assetKey",
+      "value": "hello-from-postman.txt"
+    },
+    {
+      "key": "newUser",
+      "value": "postman-person"
+    },
+    {
+      "key": "batchId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "entityId",
+      "value": "postman-demo-1"
+    },
+    {
+      "key": "assetId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    },
+    {
+      "key": "partNumber",
+      "value": "1"
+    },
+    {
+      "key": "uploadId",
+      "value": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}
