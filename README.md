@@ -137,7 +137,7 @@ Anything not fully met says so.
 
 **Contents:** [Set up and run](#set-up-and-run) · [The CMS](#the-cms) · [The photo app](#the-photo-app) · [See it](#see-it) · [Prerequisites](#prerequisites) · [Run it](#run-it) · [Try it](#try-it) · [Accounts](#accounts-sign-in-and-the-operator-command) · [Photo library](#photo-library-a-sample-application) · [Engineering console](#engineering-console) ·
 [Tests](#tests) · [Configuration](#configuration) · [Outside Development](#running-outside-development) ·
-[Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Docs](#docs)
+[Database](#database-and-migrations) · [API at a glance](#api-at-a-glance) · [Known limits](#known-limits) · [Development journey](#development-journey) · [Docs](#docs)
 
 ## Prerequisites
 
@@ -552,6 +552,27 @@ In order of importance (the reasoning and the next step for each is in [DESIGN](
 6. **No resync or replay.** A batch that never arrives is visible only as a gap; the CMS would need to send sequence numbers.
 7. **.NET 9 leaves support on 10 November 2026.** The projects target `net9.0` and roll forward, so moving to `net10.0` is a
    one-line change in `Directory.Build.props`.
+
+## Development journey
+
+The email invites using LLMs, and this was built with Claude Code. In outline:
+
+1. **A first prototype.** It worked (about 360 service tests and 100 console tests), but it had grown sideways: synchronous
+   first with asynchronous processing bolted on, two event tables, four migrations, six overlapping documents, and a console
+   wrapped around the core.
+2. **A brief, as the starting context.** Rather than patch it, I had Claude write down what it had learned in
+   [docs/REBUILD-BRIEF.md](docs/REBUILD-BRIEF.md): the original assignment word for word, the decisions already settled, a
+   target design, a requirements matrix, and the standard of evidence every claim must meet. Writing it also turned up real
+   problems in the prototype (a rule that only held while a higher version never carried an earlier timestamp, and a "hard
+   delete" that left payload bytes in the SQLite file).
+3. **This version.** A fresh session rebuilt the service from that brief in phases, stopping at an evidence gate after each.
+   The result is one durable asynchronous pipeline, a smaller core, and nothing asserted without a test that was seen to fail
+   when the behaviour was broken (the [mutation log](docs/EVIDENCE.md) plants 93 deliberate defects). The asset store, the
+   photo app, the engineering console, accounts and the website sign-in were added on top, and the
+   [requirements page](#engineering-console) says plainly what is still only partly met.
+
+I reviewed plans and decided what was committed; the tests, the mutation checks and the CI runs, not the model's say-so, are
+the evidence.
 
 ## Docs
 
