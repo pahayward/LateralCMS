@@ -140,6 +140,10 @@ public sealed class BatchProcessor(
         }
 
         var deleted = new HashSet<string>(StringComparer.Ordinal);
+
+        // Records whose stored lifetime ended in this fold. A superset of deleted: a delete followed by a re-create in the same batch
+        // leaves a record, but the files only its first lifetime named are just as deletable.
+        var ended = new HashSet<string>(StringComparer.Ordinal);
         var surviving = new Dictionary<string, HashSet<Guid>>(StringComparer.Ordinal);
 
         var ids = queued.Select(e => e.EntityId!).Distinct(StringComparer.Ordinal).ToList();
@@ -167,6 +171,11 @@ public sealed class BatchProcessor(
                     entity, tombstone,
                     new CmsEvent(row.EntityId!, row.Type!.Value, row.Version, row.Timestamp!.Value, row.Payload, row.PayloadChecksum),
                     now);
+                if (entity is not null && reduction.Entity is null)
+                {
+                    ended.Add(group.Key);
+                }
+
                 entity = reduction.Entity;
                 tombstone = reduction.Tombstone;
 
@@ -220,7 +229,7 @@ public sealed class BatchProcessor(
             }
         }
 
-        return await LinkAndEraseAsync(ids, deleted, surviving, now, cancellationToken);
+        return await LinkAndEraseAsync(ids, deleted, ended, surviving, now, cancellationToken);
     }
 
     /// <summary>
@@ -230,7 +239,7 @@ public sealed class BatchProcessor(
     /// the ledger kept.
     /// </summary>
     private async Task<Erasure> LinkAndEraseAsync(
-        List<string> ids, HashSet<string> deleted, Dictionary<string, HashSet<Guid>> surviving, DateTime now, CancellationToken cancellationToken)
+        List<string> ids, HashSet<string> deleted, HashSet<string> ended, Dictionary<string, HashSet<Guid>> surviving, DateTime now, CancellationToken cancellationToken)
     {
         var links = await db.AssetLinks.Where(l => ids.Contains(l.EntityId)).ToListAsync(cancellationToken);
 
@@ -249,17 +258,21 @@ public sealed class BatchProcessor(
             }
         }
 
-        if (deleted.Count == 0)
+        if (ended.Count == 0)
         {
             return Erasure.None;
         }
 
-        // Deleted records: drop their links and note which files they named.
+        // Records whose lifetime ended: note which files they named. A deleted record's links go; a re-created one's were already
+        // made to match its new payload above, and a file it names again is kept by the check below.
         var named = new HashSet<Guid>();
-        foreach (var link in links.Where(l => deleted.Contains(l.EntityId)))
+        foreach (var link in links.Where(l => ended.Contains(l.EntityId)))
         {
             named.Add(link.AssetId);
-            db.AssetLinks.Remove(link);
+            if (deleted.Contains(link.EntityId))
+            {
+                db.AssetLinks.Remove(link);
+            }
         }
 
         // The ledger kept a hash of each earlier version's content; that is derived from what is being erased.
@@ -302,7 +315,7 @@ public sealed class BatchProcessor(
             }
         }
 
-        return new Erasure(paths, deleted.Count);
+        return new Erasure(paths, ended.Count);
     }
 
     /// <summary>What a batch erased: the files to overwrite and remove, and how many records were deleted.</summary>

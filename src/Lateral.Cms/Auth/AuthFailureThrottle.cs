@@ -34,9 +34,10 @@ public sealed class AuthFailureThrottle(IOptions<AuthOptions> options, TimeProvi
         var now = time.GetUtcNow().UtcDateTime;
         lock (entry)
         {
+            // An expired entry is left for RecordFailure to reset and the sweep to remove: removing it here could discard a
+            // failure another request is recording on the same entry.
             if (now - entry.Start >= Window)
             {
-                _entries.TryRemove(client, out _);
                 return false;
             }
 

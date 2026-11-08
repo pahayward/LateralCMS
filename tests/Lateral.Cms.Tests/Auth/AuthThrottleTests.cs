@@ -1,4 +1,5 @@
 using System.Net;
+using Lateral.Cms.Auth;
 using Lateral.Cms.Tests.Infrastructure;
 
 namespace Lateral.Cms.Tests.Auth;
@@ -81,5 +82,75 @@ public class AuthThrottleTests : IClassFixture<AuthThrottleTests.ThrottledFactor
         var later = (await _factory.User().GetAsync("/api/entities")).Headers.RetryAfter!.Delta!.Value;
 
         Assert.True(later < first, $"{later} should be shorter than {first}");
+    }
+}
+
+public class AuthThrottleUnitTests
+{
+    private static (AuthFailureThrottle Throttle, ManualTimeProvider Time) Make(int max = 3)
+    {
+        var time = new ManualTimeProvider(new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        var options = Microsoft.Extensions.Options.Options.Create(new AuthOptions { MaxFailuresPerMinute = max });
+        return (new AuthFailureThrottle(options, time), time);
+    }
+
+    [Fact]
+    public void Blocks_at_the_limit_and_says_how_long()
+    {
+        var (throttle, _) = Make();
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.False(throttle.IsBlocked("a", out _));
+            throttle.RecordFailure("a");
+        }
+
+        Assert.True(throttle.IsBlocked("a", out var wait));
+        Assert.InRange(wait, TimeSpan.FromSeconds(59), TimeSpan.FromSeconds(60));
+        Assert.False(throttle.IsBlocked("b", out _));
+    }
+
+    [Fact]
+    public void A_new_window_starts_counting_from_one_even_after_the_old_one_was_looked_at()
+    {
+        var (throttle, time) = Make();
+        for (var i = 0; i < 3; i++)
+        {
+            throttle.RecordFailure("a");
+        }
+
+        time.Advance(TimeSpan.FromSeconds(61));
+        Assert.False(throttle.IsBlocked("a", out _)); // expired
+        throttle.RecordFailure("a");
+        throttle.RecordFailure("a");
+        Assert.False(throttle.IsBlocked("a", out _)); // two in the new window, not three
+        throttle.RecordFailure("a");
+        Assert.True(throttle.IsBlocked("a", out _));
+    }
+
+    [Fact]
+    public void A_limit_of_zero_switches_the_throttle_off()
+    {
+        var (throttle, _) = Make(0);
+        for (var i = 0; i < 50; i++)
+        {
+            throttle.RecordFailure("a");
+        }
+
+        Assert.False(throttle.IsBlocked("a", out _));
+    }
+
+    [Fact]
+    public async Task Concurrent_failures_are_all_counted()
+    {
+        var (throttle, _) = Make(1000);
+        await Task.WhenAll(Enumerable.Range(0, 200).Select(_ => Task.Run(() => throttle.RecordFailure("a"))));
+        for (var i = 0; i < 799; i++)
+        {
+            throttle.RecordFailure("a");
+        }
+
+        Assert.False(throttle.IsBlocked("a", out _)); // 999
+        throttle.RecordFailure("a");
+        Assert.True(throttle.IsBlocked("a", out _)); // 1000
     }
 }

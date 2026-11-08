@@ -384,8 +384,8 @@ public sealed class AssetService(
     /// <summary>Hard delete: the row goes, the bytes are overwritten and removed (unless another asset shares the content), and the audit log says who.</summary>
     public async Task<bool> DeleteAsync(Guid id, string admin, CancellationToken cancellationToken)
     {
-        string? wipe = null;
-        string? quarantine = null;
+        string? wipe;
+        string quarantine;
         using (await gate.AcquireAsync(cancellationToken))
         {
             db.ChangeTracker.Clear();
@@ -403,12 +403,14 @@ public sealed class AssetService(
             var shared = await db.Assets.AnyAsync(a => a.Sha256 == asset.Sha256 && a.State != AssetState.Rejected && a.Id != id, cancellationToken);
             wipe = shared ? null : store.BlobPath(asset.Sha256);
             db.ChangeTracker.Clear();
-        }
 
-        await store.WipeAsync(quarantine, cancellationToken);
-        if (wipe is not null)
-        {
-            await store.WipeAsync(wipe, cancellationToken);
+            // Still under the gate: the scan processor promotes into the blob area under it too, so an identical upload cleared
+            // meanwhile cannot find this blob, skip copying, and then lose it to the wipe.
+            await store.WipeAsync(quarantine, cancellationToken);
+            if (wipe is not null)
+            {
+                await store.WipeAsync(wipe, cancellationToken);
+            }
         }
 
         await TruncateLogAsync(cancellationToken);
