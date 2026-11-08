@@ -35,7 +35,9 @@ public static class AccountEndpoints
     public static IEndpointRouteBuilder MapAccountEndpoints(this WebApplication app)
     {
         app.MapPost("/api/auth/login", LoginAsync).AllowAnonymous().WithName("SignIn");
-        app.MapPost("/api/auth/logout", LogoutAsync).WithName("SignOut");
+        // Cast to Delegate: a method that takes only HttpContext and returns a Task is otherwise taken for a raw request delegate, which has
+        // no route metadata and so would be missing from the API reference.
+        app.MapPost("/api/auth/logout", (Delegate)LogoutAsync).WithName("SignOut");
         app.MapGet("/api/auth/me", Me).WithName("WhoAmI");
         app.MapPost("/api/auth/password", ChangeOwnPasswordAsync).WithName("ChangeOwnPassword");
 
@@ -102,10 +104,10 @@ public static class AccountEndpoints
         return Results.Ok(Describe(principal, AuthExtensions.SessionScheme));
     }
 
-    private static async Task LogoutAsync(HttpContext http)
+    private static async Task<IResult> LogoutAsync(HttpContext http)
     {
         await http.SignOutAsync(AuthExtensions.SessionScheme);
-        http.Response.StatusCode = StatusCodes.Status204NoContent;
+        return Results.NoContent();
     }
 
     private static IResult Me(ClaimsPrincipal user) => Results.Ok(Describe(user, user.Identity?.AuthenticationType ?? ""));

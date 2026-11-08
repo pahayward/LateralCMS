@@ -3,6 +3,9 @@
 //   node tools/screenshots/capture.mjs [console-url]        default http://localhost:5191
 //   node tools/screenshots/capture.mjs http://localhost:5191 overview people   only those shots
 //
+// The Swagger shots are of the service itself, not the console, and its page asks for a password. Give SERVICE_URL, the address of
+// a service the browser can reach already signed in (for example a small proxy that adds the Authorization header), or they are skipped.
+//
 // Start the console with Console__SignIn__Enabled=false for this (the shots do not sign in). Needs the demo CMS and console running (see the README) and Chrome or Edge installed. It drives the browser over the
 // DevTools protocol (no packages): load a page, optionally run a little script in it (open a record, run the tour), wait, and
 // save a PNG. The scripts run in the page exactly as a person's clicks would.
@@ -50,6 +53,10 @@ const shots = [
   { name: 'settings', url: '/engineering#/settings', width: 1400, height: 1400, wait: 3000 },
   { name: 'storage', url: '/engineering#/settings/storage', width: 1400, height: 1300, wait: 3000 },
   { name: 'home-server', url: '/engineering#/settings/home', width: 1400, height: 1600, wait: 2500 },
+  // The API reference, served by the service itself.
+  { name: 'swagger', service: true, url: '/swagger', width: 1400, height: 1000, wait: 3500 },
+  { name: 'swagger-events', service: true, url: '/swagger', width: 1400, height: 1500, wait: 3000,
+    run: `[...document.querySelectorAll('.opblock')].find((b) => b.textContent.includes('Send a batch of CMS events'))?.querySelector('.opblock-summary-control')?.click()`, after: 1500 },
   { name: 'security', url: '/engineering#/verify', width: 1400, height: 1000, wait: 2500, run: click('Run the matrix'), after: 20000 },
 ];
 
@@ -99,8 +106,9 @@ let taken = 0;
 try {
   for (const shot of shots) {
     if (only.size > 0 && !only.has(shot.name)) continue;
+    if (shot.service && !process.env.SERVICE_URL) { console.log(`${shot.name}: skipped (set SERVICE_URL)`); continue; }
     await send('Emulation.setDeviceMetricsOverride', { width: shot.width, height: shot.height, deviceScaleFactor: 1, mobile: false });
-    await send('Page.navigate', { url: base + shot.url });
+    await send('Page.navigate', { url: (shot.service ? process.env.SERVICE_URL.replace(/\/$/, '') : base) + shot.url });
     await sleep(shot.wait ?? 2500);
     if (shot.run) {
       const result = await send('Runtime.evaluate', { expression: shot.run, awaitPromise: true, returnByValue: true });

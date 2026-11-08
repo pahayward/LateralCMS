@@ -72,7 +72,7 @@ clickable in the engineering console, beside two more (the life of an event and 
   password ever in a log.
 - **Made to be run at home.** A first-run administrator, an SSH command that resets any password, every setting and storage
   path on view, and a [home-server guide](docs/OPERATIONS.md).
-- **Proven, not claimed.** 685 service tests and 157 console tests; 93 deliberate defects planted one at a time and each caught
+- **Proven, not claimed.** 702 service tests and 165 console tests; 96 deliberate defects planted one at a time and each caught
   by a test ([evidence](docs/EVIDENCE.md)); every original requirement traced to how it was met, including the ones that were not.
 
 ### Documentation for the CMS
@@ -478,6 +478,7 @@ name the setting.
 | `Api:DefaultPageSize` / `MaxPageSize` | 50 / 100 | |
 | `Ingestion:MaxConcurrentAccepts` / `AcceptQueueLimit` | 16 / 256 | batches read into memory at once, and how many may wait; overflow gets `429` |
 | `Proxy:KnownProxies` / `KnownNetworks` | none | trusted reverse proxies; their `X-Forwarded-For` sets the client address for the throttle (ignored if none) |
+| `ApiDocs:Enabled` | `true` | the Swagger page and OpenAPI document at `/swagger`; both need a signed-in caller. `false` makes them `404` |
 | `Admin:AllowReset` | `false` | test-only erase endpoint: allowed in Development, in another environment only if `Admin:ResetAllowedEnvironment` names it, never in Production |
 | `Assets:Root` | `App_Data/assets` | folder for asset bytes (quarantine, parts, content-addressed blobs) |
 | `Assets:MaxSimpleBytes` / `MaxObjectBytes` | 8 MiB / 5 GiB | one `PUT` up to the first; multipart up to the second |
@@ -522,6 +523,14 @@ DOTNET_ROLL_FORWARD=Major dotnet ef migrations add <Name> --project src/Lateral.
 (`DOTNET_ROLL_FORWARD=Major` is only needed on a machine that has just a newer SDK than the 9.0 tool.)
 
 ## API at a glance
+
+**Swagger.** The whole API is described, and can be tried, at `/swagger` (the OpenAPI document is `/swagger/v1/swagger.json`). The browser asks for a
+username and password, press **Authorize** to use the same ones for the calls you try. It is read from the routes the service really maps, so
+it cannot list one that is gone, and a test fails if a route has no explanation or names the wrong callers. Switch it off with `ApiDocs:Enabled=false`.
+
+| ![Swagger UI showing every route of the CMS API, grouped by who uses it](docs/images/swagger.png) | ![One route opened: what it is for, who may call it, an example body and every status it gives](docs/images/swagger-events.png) |
+|---|---|
+| **Every route,** grouped by who uses it; the lock shows it needs a caller. | **One route opened:** what it is for, who may call it, an example you can send, and what each status means. |
 
 | Route | Who | |
 |---|---|---|
@@ -575,7 +584,7 @@ The email invites using LLMs, and this was built with Claude Code. In outline:
    delete" that left payload bytes in the SQLite file).
 3. **This version.** A fresh session rebuilt the service from that brief in phases, stopping at an evidence gate after each.
    The result is one durable asynchronous pipeline, a smaller core, and nothing asserted without a test that was seen to fail
-   when the behaviour was broken (the [mutation log](docs/EVIDENCE.md) plants 93 deliberate defects). The asset store, the
+   when the behaviour was broken (the [mutation log](docs/EVIDENCE.md) plants 96 deliberate defects). The asset store, the
    photo app, the engineering console, accounts and the website sign-in were added on top, and the
    [requirements page](#engineering-console) says plainly what is still only partly met.
 

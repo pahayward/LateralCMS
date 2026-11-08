@@ -2564,6 +2564,37 @@
       "origin": "added"
     },
     {
+      "id": "DX-03",
+      "area": "Security hardening",
+      "text": "The API is described by an OpenAPI document and a Swagger page (`/swagger`) read from the routes the service really maps: each route has a name, a written summary, a group, the callers the role matrix proves can use it, and the statuses it gives; the upload routes say their body is raw bytes; the example event batch is one the service accepts. Both need a signed-in caller (a browser is asked for a password), the page is served under a policy that allows only its own scripts and no generated code, nothing else is relaxed, and `ApiDocs:Enabled=false` removes both",
+      "pri": "SHOULD",
+      "priNote": "",
+      "evidence": [
+        "I",
+        "A",
+        "M"
+      ],
+      "limit": "",
+      "status": "Done",
+      "statusKind": "done",
+      "mutations": [
+        "M94",
+        "M95",
+        "M96"
+      ],
+      "tests": [
+        {
+          "name": "ApiDocsSwitchedOffTests",
+          "count": 1
+        },
+        {
+          "name": "ApiDocsTests",
+          "count": 11
+        }
+      ],
+      "origin": "added"
+    },
+    {
       "id": "AC-01",
       "area": "Accounts, sign-in and operating it",
       "text": "People who sign in live in the database, not in configuration. A password is stored only as a salted PBKDF2-SHA256 hash (600000 iterations by default), never in clear text, in the log or in the audit log; a hash made with fewer iterations than the setting is upgraded at the next sign-in; a malformed stored value never matches",

@@ -1480,5 +1480,47 @@
       "Lateral.Cms.Tests.Auth.AccountApiTests.A_person_changes_their_own_password_keeps_their_session_and_loses_every_other",
       "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document"
     ]
+  },
+  {
+    "id": "M94",
+    "area": "API reference",
+    "rule": "the page's relaxed content policy is sent with every response, not just under /swagger",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "if (context.Request.Path.StartsWithSegments(UiPath))",
+    "replace": "if (true)",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Api.ApiDocsTests.The_page_has_its_own_policy_which_allows_only_its_own_scripts_and_no_generated_code"
+    ]
+  },
+  {
+    "id": "M95",
+    "area": "API reference",
+    "rule": "the API reference page may run script built from text",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "script-src 'self'; style-src",
+    "replace": "script-src 'self' 'unsafe-eval'; style-src",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Api.ApiDocsTests.The_page_has_its_own_policy_which_allows_only_its_own_scripts_and_no_generated_code"
+    ]
+  },
+  {
+    "id": "M96",
+    "area": "API reference",
+    "rule": "a route is described as open to more callers than the role matrix proves",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "Policies.AdminOnly => \"an admin only.\",",
+    "replace": "Policies.AdminOnly => \"a signed-in user or admin.\",",
+    "outcome": "killed",
+    "how": "a test failed",
+    "failed": [
+      "Lateral.Cms.Tests.Delivery.RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document",
+      "Lateral.Cms.Tests.Api.ApiDocsTests.Each_route_names_the_callers_the_role_matrix_proves_can_use_it"
+    ]
   }
 ]

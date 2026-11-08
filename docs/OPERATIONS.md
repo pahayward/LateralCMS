@@ -59,6 +59,9 @@ Proxy__KnownProxies__0=127.0.0.1
   else is locked out. To rotate it, add a second GUID (`Auth__Cms__Passwords__1`), switch the CMS to it, then remove the first.
 - `Assets:MaxBytes` is the most the store will hold; set it below the free space of the disk.
 - Production refuses to start with `Admin:AllowReset` on.
+- `/swagger` is the interactive API reference (and `/swagger/v1/swagger.json` its OpenAPI document). Both ask for a username and password
+  and show only the shape of the API, no data. It is on by default; if you would rather not show even that to your network, set
+  `ApiDocs__Enabled=false`. Behind a reverse proxy it needs nothing special.
 
 Run as a service, `/etc/systemd/system/lateral.service`:
 

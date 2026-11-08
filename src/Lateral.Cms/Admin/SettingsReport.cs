@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Lateral.Cms.ApiDocs;
 using Lateral.Cms.Assets;
 using Lateral.Cms.Auth;
 using Lateral.Cms.Entities;
@@ -30,6 +31,7 @@ public sealed partial class SettingsReport(IServiceProvider services, IConfigura
         (AssetOptions.SectionName, typeof(AssetOptions)),
         (ApiOptions.SectionName, typeof(ApiOptions)),
         (AdminOptions.SectionName, typeof(AdminOptions)),
+        (ApiDocsOptions.SectionName, typeof(ApiDocsOptions)),
         (ProxyOptions.SectionName, typeof(ProxyOptions)),
     ];
 

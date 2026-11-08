@@ -9,6 +9,7 @@
     { "id": "scanner", "title": "Content scanner", "about": "Every upload is scanned before it can be served. Only the mock scanner is built in." },
     { "id": "reading", "title": "Reading the API", "about": "Paging for GET /api/entities." },
     { "id": "admin", "title": "Administration", "about": "The test-only reset." },
+    { "id": "apidocs", "title": "API reference", "about": "Swagger: the interactive reference for every route, at /swagger. It needs a signed-in caller." },
     { "id": "proxy", "title": "Reverse proxy", "about": "Name the proxies in front of the service so the client address, and therefore the sign-in throttle, is right." }
   ],
   "settings": [
@@ -79,6 +80,7 @@
     { "key": "Api:MaxPageSize", "group": "reading", "description": "Largest page a caller may ask for." },
 
     { "key": "Admin:AllowReset", "group": "admin", "description": "Maps POST /api/admin/reset, which erases all data. Refused at startup in Production. Never for a real installation." },
+    { "key": "ApiDocs:Enabled", "group": "apidocs", "description": "Serves the Swagger page (/swagger) and its OpenAPI document (/swagger/v1/swagger.json). Both need a signed-in caller and show only the shape of the API, no data. Turn off to answer 404.", "example": "false" },
     { "key": "Admin:ResetAllowedEnvironment", "group": "admin", "description": "Outside Development the reset also needs the environment named here on purpose." },
 
     { "key": "Proxy:KnownProxies", "group": "proxy", "description": "Addresses of trusted reverse proxies. Their X-Forwarded-For and X-Forwarded-Proto are believed; with none named the headers are ignored.", "example": "127.0.0.1" },

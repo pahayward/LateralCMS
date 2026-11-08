@@ -746,5 +746,29 @@
     "file": "src/Lateral.Cms/Auth/AccountService.cs",
     "find": "if (!PasswordHasher.Verify(current ?? \"\", actor.PasswordHash, int.MaxValue, out _))",
     "replace": "if (false)"
+  },
+  {
+    "id": "M94",
+    "area": "API reference",
+    "rule": "the page's relaxed content policy is sent with every response, not just under /swagger",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "if (context.Request.Path.StartsWithSegments(UiPath))",
+    "replace": "if (true)"
+  },
+  {
+    "id": "M95",
+    "area": "API reference",
+    "rule": "the API reference page may run script built from text",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "script-src 'self'; style-src",
+    "replace": "script-src 'self' 'unsafe-eval'; style-src"
+  },
+  {
+    "id": "M96",
+    "area": "API reference",
+    "rule": "a route is described as open to more callers than the role matrix proves",
+    "file": "src/Lateral.Cms/ApiDocs/ApiDocsExtensions.cs",
+    "find": "Policies.AdminOnly => \"an admin only.\",",
+    "replace": "Policies.AdminOnly => \"a signed-in user or admin.\","
   }
 ]

@@ -12,7 +12,7 @@ tests in [REQUIREMENTS](REQUIREMENTS.md).
 | Check | Command | Result |
 |---|---|---|
 | Strict build (warnings are errors, as CI) | `CI=true dotnet build Lateral.sln -c Release` | 0 warnings, 0 errors |
-| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 684 passed, 0 failed, 20 to 25 s |
+| Service suite | `dotnet test tests/Lateral.Cms.Tests -c Release` | 702 passed, 0 failed, 25 s |
 | Test console suite | `dotnet test tests/Lateral.Cms.TestConsole.Tests -c Release` | 133 passed, 0 failed |
 | Flake gate | the service suite, repeated with no rebuild | 10 of 10 passed (684 tests each, 20 to 25 s per run), no failures. Earlier gates each stopped at a failure that was then traced and fixed: an error logged when the app stopped mid-way through opening a connection, a race in the Microsoft.Data.Sqlite connection pool that gave a rare HTTP 500 "database is locked" (DESIGN K21), and a scan test that raced a 400 ms timeout (the 64 MiB test now allows 30 s) |
 
@@ -161,8 +161,11 @@ was not caught. "(+N more)" means N further tests also failed. Manual, not an au
 | M91 | Accounts | a role change does not reach a session that is already open | killed | `Auth › AccountApiTests.A_role_change_applies_to_a_session_already_open` (+1 more) |
 | M92 | Accounts | the command-line tool audits as an ordinary user, not as the operator | killed | `Delivery › RequirementsTraceTests.The_generated_requirements_data_matches_the_requirements_document` (+1 more) |
 | M93 | Accounts | a person can change their password without knowing the current one | killed | `Auth › AccountApiTests.A_person_changes_their_own_password_keeps_their_session_and_loses_every_other` (+1 more) |
+| M94 | API reference | the page's relaxed content policy is sent with every response, not just under /swagger | killed | `Api › ApiDocsTests.The_page_has_its_own_policy_which_allows_only_its_own_scripts_and_no_generated_code` (+1 more) |
+| M95 | API reference | the API reference page may run script built from text | killed | `Api › ApiDocsTests.The_page_has_its_own_policy_which_allows_only_its_own_scripts_and_no_generated_code` (+1 more) |
+| M96 | API reference | a route is described as open to more callers than the role matrix proves | killed | `Api › ApiDocsTests.Each_route_names_the_callers_the_role_matrix_proves_can_use_it` (+1 more) |
 
-93 of 93 defects were caught.
+96 of 96 defects were caught.
 
 ## 3. Measurements
 

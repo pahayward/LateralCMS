@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Lateral.Cms.Admin;
+using Lateral.Cms.ApiDocs;
 using Lateral.Cms.Assets;
 using Lateral.Cms.Auth;
 using Lateral.Cms.Entities;
@@ -52,6 +53,7 @@ builder.Services.AddCmsEntities();
 builder.Services.AddCmsAdmin();
 builder.Services.AddCmsAdminInfo();
 builder.Services.AddCmsAssets();
+builder.Services.AddCmsApiDocs();
 builder.Services.AddRateLimiter(limits =>
 {
     limits.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -111,6 +113,9 @@ app.UsePasswordChangeRequired();
 app.UseAuthorization();
 app.UseRateLimiter();
 
+// Swagger: the API reference at /swagger, for a signed-in caller.
+app.UseCmsApiDocs();
+
 app.MapAccountEndpoints();
 app.MapIngestionEndpoints();
 app.MapBatchEndpoints();
@@ -123,7 +128,8 @@ app.MapGet("/health", async (CmsReadDbContext db, CancellationToken cancellation
         await db.Database.CanConnectAsync(cancellationToken)
             ? Results.Ok(new { status = "ok" })
             : Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable))
-    .AllowAnonymous();
+    .AllowAnonymous()
+    .WithName("Health");
 
 app.Run();
 return 0;

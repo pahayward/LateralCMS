@@ -119,6 +119,14 @@ for _ in $(seq 1 40); do state="$(curl -s -u "$CMSAUTH" "$B/cms/batches/$BATCH" 
 same "the worker applies the batch" "$state" "completed"
 same "an admin reads the record" "$(code -u "admin:$NEW_PW" "$B/api/entities/smoke-1")" "200"
 
+echo "-- the API reference (Swagger)"
+same "the OpenAPI document needs a sign-in (401)" "$(code "$B/swagger/v1/swagger.json")" "401"
+same "the Swagger page needs a sign-in (401)" "$(code "$B/swagger/index.html")" "401"
+same "the OpenAPI document opens for an admin (200)" "$(code -u "admin:$NEW_PW" "$B/swagger/v1/swagger.json")" "200"
+if curl -s -u "admin:$NEW_PW" "$B/swagger/v1/swagger.json" | grep -q '"/cms/events"'; then ok "the document describes the webhook"; else bad "the document does not mention /cms/events"; fi
+csp="$(curl -s -D - -o /dev/null -u "admin:$NEW_PW" "$B/swagger/index.html" | grep -i '^content-security-policy')"
+if echo "$csp" | grep -q "script-src 'self'" && ! echo "$csp" | grep -q "unsafe-eval"; then ok "the page runs only its own scripts, no generated code"; else bad "the page's content policy is wrong: $csp"; fi
+
 echo "-- an asset: upload, scan, ranged download"
 head -c 262144 /dev/urandom > "$WORK/picture.bin"
 printf '\x89PNG\r\n\x1a\n' | cat - "$WORK/picture.bin" > "$WORK/picture.png"
